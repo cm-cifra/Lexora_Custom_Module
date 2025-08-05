@@ -304,15 +304,16 @@
                         (category == 'mirror' and comp.id == mirror) or
                         (category == 'faucet' and comp.id == faucet)
                     ) else 'border-light shadow'}" style="min-height: 140px;">
-
                                                         <div class="d-flex justify-content-center align-items-center bg-light rounded" style="height: 72px;">
-    <t t-set="image_url" t-value="
-        (custom_image_kit and getattr(custom_image_kit, category + '_image', False)) 
-        and ('/web/image/product.kits/%s/%s_image' % (custom_image_kit.id, category)) 
-        or ('/web/image/product.product/%s/image_1920' % comp.id)
-    "/>
-    <img t-att-src="image_url" class="img-fluid" style="max-height: 64px; object-fit: contain;" />
-</div>
+                                                            <t t-set="image_field" t-value="category + '_image'" />
+                                                            <t t-if="matching_kit and getattr(matching_kit, image_field, False)">
+                                                                <img t-att-src="'/web/image/product.kits/%s/%s_image' % (custom_image_kit.id, category)" class="img-fluid" style="max-height: 64px; object-fit: contain;" />
+                                                            </t>
+                                                            <t t-else="">
+                                                                 <img t-att-src="'/web/image/product.product/%s/image_1920' % comp.id if comp else '/web/static/src/img/placeholder.png'"
+             class="img-fluid" style="max-height: 64px; object-fit: contain;" />  </t>
+                                                        </div>
+
 
                                                         <div class="mt-2 text-center">
                                                             <small class="text-muted d-block" style="font-size: 11px;">
