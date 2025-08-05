@@ -6,7 +6,7 @@
     'author': 'chris mark cifra',
     'description': 'Product Configuration of Cabinets.',
     'data': [
-        'views/product_selection.xml',
+        'views/kits_view.xml',
     ],
     'installable': True,
     'auto_install': False,
