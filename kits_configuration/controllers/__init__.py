@@ -1,1 +1,1 @@
-from . import controller_config
+from . import main
