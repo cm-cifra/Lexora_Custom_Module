@@ -9,9 +9,7 @@
         
         'security/product_kits_security.xml',
         'security/ir.model.access.csv', 
-        'views/product_kits_views.xml', 
-        'views/product_kits.xml',
-        'views/kits_config.xml',
+        'views/product_kits_views.xml',  
        
         
     ],

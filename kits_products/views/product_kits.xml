@@ -248,22 +248,24 @@
                             <t t-set="shown_sizes" t-value="[]" />
                             <div class="mb-5">
                                 <h5 class="fw-semibold mb-4 d-flex align-items-center gap-3 text-primary">
-                                    <span class="badge bg-primary text-white rounded-circle shadow d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 0.95rem;">1</span>
-                                    <span style="font-size: 1.1rem;">Choose Cabinet Size</span>
+                                    <span class="badge bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 36px; height: 36px; font-size: 0.95rem;">
+          1
+                                    </span>
+                                    <span class="fs-6">Choose Cabinet Size</span>
                                 </h5>
 
-                                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+                                <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5">
                                     <t t-foreach="related_kits" t-as="rel_kit">
                                         <t t-if="rel_kit.size not in shown_sizes">
                                             <t t-set="shown_sizes" t-value="shown_sizes + [rel_kit.size]" />
                                             <div class="col">
-                                                <a t-att-href="'/product_kits/group?collection=%s&amp;size=%s' % (rel_kit.collection or '', rel_kit.size or '')" class="text-decoration-none">
-                                                    <div class="card text-center p-2 h-100 rounded-3 border-2 transition border-light shadow">
+                                                <a t-att-href="'/product_kits/group?collection=%s&amp;size=%s' % (rel_kit.collection or '', rel_kit.size or '')" class="text-decoration-none h-100 d-block">
+                                                    <div class="card p-2 h-100 rounded-3 border-2 shadow-sm transition border-light hover-border-primary position-relative">
                                                         <div class="d-flex justify-content-center align-items-center bg-light rounded" style="height: 72px;">
                                                             <img t-att-src="'/web/image/product.product/' + str(rel_kit.product_id.id) + '/image_1920'" class="img-fluid" style="max-height: 64px; object-fit: contain;" />
                                                         </div>
-                                                        <div class="mt-2">
-                                                            <small class="text-dark fw-semibold" style="font-size: 11px;">
+                                                        <div class="mt-2 text-center">
+                                                            <small class="text-dark fw-semibold d-block" style="font-size: 12px;">
                                                                 <t t-esc="rel_kit.size" />
                                                             </small>
                                                         </div>
@@ -276,6 +278,7 @@
                             </div>
                         </t>
 
+                        <!-- Loop for cabinet, counter_top, mirror, faucet -->
                         <t t-foreach="['cabinet', 'counter_top', 'mirror', 'faucet']" t-as="category">
                             <t t-if="components[category]">
                                 <div class="mb-5">
@@ -283,7 +286,7 @@
                                         <span class="badge bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px; font-size: 0.85rem;">
                                             <t t-esc="{'cabinet': 2, 'counter_top': 3, 'mirror': 4, 'faucet': 5}[category]" />
                                         </span>
-                                        <h6 class="mb-0 fw-semibold text-uppercase text-dark" style="font-size: 0.95rem;">
+                                        <h6 class="mb-0 fw-semibold text-uppercase text-dark fs-6">
                                             <t t-esc="{'cabinet': 'Color', 'counter_top': 'Counter Top', 'mirror': 'Mirror', 'faucet': 'Faucet'}[category]" />
                                         </h6>
                                     </div>
@@ -297,29 +300,26 @@
                 ('' if (category == 'counter_top' and counter_top == comp.id) else (comp.id if category == 'counter_top' else counter_top or '')),
                 ('' if (category == 'mirror' and mirror == comp.id) else (comp.id if category == 'mirror' else mirror or '')),
                 ('' if (category == 'faucet' and faucet == comp.id) else (comp.id if category == 'faucet' else faucet or ''))
-            )" class="text-decoration-none">
+              )" class="text-decoration-none h-100 d-block">
                                                     <div t-attf-class="card text-center p-2 h-100 rounded-3 border-2 transition #{'border-primary shadow-sm' if (
-                        (category == 'cabinet' and comp.id == cabinet) or
-                        (category == 'counter_top' and comp.id == counter_top) or
-                        (category == 'mirror' and comp.id == mirror) or
-                        (category == 'faucet' and comp.id == faucet)
+                      (category == 'cabinet' and comp.id == cabinet) or
+                      (category == 'counter_top' and comp.id == counter_top) or
+                      (category == 'mirror' and comp.id == mirror) or
+                      (category == 'faucet' and comp.id == faucet)
                     ) else 'border-light shadow'}" style="min-height: 140px;">
                                                         <div class="d-flex justify-content-center align-items-center bg-light rounded" style="height: 72px;">
-                                                            <t t-set="image_field" t-value="category + '_image'" />
-                                                            <t t-if="matching_kit and getattr(matching_kit, image_field, False)">
+                                                            <t t-if="matching_kit">
                                                                 <img t-att-src="'/web/image/product.kits/%s/%s_image' % (custom_image_kit.id, category)" class="img-fluid" style="max-height: 64px; object-fit: contain;" />
                                                             </t>
                                                             <t t-else="">
-                                                                 <img t-att-src="'/web/image/product.product/%s/image_1920' % comp.id if comp else '/web/static/src/img/placeholder.png'"
-             class="img-fluid" style="max-height: 64px; object-fit: contain;" />  </t>
+                                                                <img t-att-src="'/web/image/product.product/%s/image_1920' % comp.id if comp else '/web/static/src/img/placeholder.png'" class="img-fluid" style="max-height: 64px; object-fit: contain;" />
+                                                            </t>
                                                         </div>
-
-
-                                                        <div class="mt-2 text-center">
+                                                        <div class="mt-2">
                                                             <small class="text-muted d-block" style="font-size: 11px;">
                                                                 <t t-esc="comp.default_code or 'No SKU'" />
                                                             </small>
-                                                            <small class="text-dark fw-semibold" style="font-size: 11px;">
+                                                            <small class="text-dark fw-semibold d-block" style="font-size: 11px;">
                                                                 <t t-set="kit_color" t-value="''" />
                                                                 <t t-foreach="kits" t-as="kit">
                                                                     <t t-if="not kit_color and comp.id in kit.cabinet_ids.ids">
@@ -334,12 +334,11 @@
                                             </div>
                                         </t>
                                     </div>
-
-
                                 </div>
                             </t>
                         </t>
                     </div>
+
 
 
                 </div>
