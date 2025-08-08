@@ -1,0 +1,31 @@
+<odoo>
+    <!-- 1. Tree View -->
+    <record id="view_order_tracking_tree" model="ir.ui.view">
+        <field name="name">sale.order.tracking.tree</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <tree string="Sales Order Tracking">
+                <field name="name"/>
+                <field name="date_order"/>
+                <field name="state"/>
+                <field name="carrier_name"/>
+                <field name="delivery_date"/>
+                <field name="expected_delivery_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 2. Action -->
+    <record id="action_sale_order_tracking" model="ir.actions.act_window">
+        <field name="name">Sales Order Tracking</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_order_tracking_tree"/>
+    </record>
+
+    <!-- 3. Menu -->
+    <menuitem id="menu_sale_order_tracking_root"
+              name="Sales Order Tracking"
+              parent="sale.sale_order_menu"
+              action="action_sale_order_tracking"/>
+</odoo>
