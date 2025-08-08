@@ -4,7 +4,12 @@
         <field name="name">sale.order.tracking.tree</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <tree string="Sales Order Tracking">
+            <tree string="Sales Order Tracking"
+                  decoration-muted="state in ['draft']"
+                  decoration-info="state in ['sent']"
+                  decoration-warning="state in ['sale']"
+                  decoration-success="state in ['done']"
+                  decoration-danger="state in ['cancel']">
                 <field name="name"/>
                 <field name="date_order"/>
                 <field name="state"/>
