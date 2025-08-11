@@ -1,10 +1,9 @@
-from odoo import models, fields, api
+from odoo import models, fields
 
 class AmazonOffer(models.Model):
     _name = 'amazon.offer'
     _description = 'Amazon Offer'
 
-    # Add this missing field
     company_id = fields.Many2one(
         'res.company',
         string='Company',
@@ -12,4 +11,4 @@ class AmazonOffer(models.Model):
         required=True
     )
 
-    # ... keep your other fields here ...
+    # ... existing fields ...
