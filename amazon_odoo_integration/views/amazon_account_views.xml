@@ -41,6 +41,18 @@
       </form>
     </field>
   </record>
+<record id="view_amazon_account_search" model="ir.ui.view">
+    <field name="name">amazon.account.search</field>
+    <field name="model">amazon.account</field>
+    <field name="arch" type="xml">
+        <search>
+            <field name="name"/>
+            <field name="account_name"/>
+            <field name="home_marketplace"/>
+            <filter string="Active" name="active" domain="[('active','=',True)]"/>
+        </search>
+    </field>
+</record>
 
   <!-- Action for Accounts (after views are defined) -->
   <record id="action_amazon_account" model="ir.actions.act_window">
