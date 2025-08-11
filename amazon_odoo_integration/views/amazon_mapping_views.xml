@@ -3,11 +3,6 @@
     <!-- ===============================
          PRODUCT MAPPINGS
     ================================ -->
-    <menuitem id="menu_amazon_product_mappings"
-              name="Product Mappings"
-              parent="menu_amazon_root"
-              action="action_amazon_product_mapping"
-              sequence="20"/>
 
     <!-- Action for Product Mappings -->
     <record id="action_amazon_product_mapping" model="ir.actions.act_window">
@@ -20,6 +15,13 @@
             </p>
         </field>
     </record>
+
+    <!-- Menu for Product Mappings -->
+    <menuitem id="menu_amazon_product_mappings"
+              name="Product Mappings"
+              parent="menu_amazon_root"
+              action="action_amazon_product_mapping"
+              sequence="20"/>
 
     <!-- Tree View for Product Mapping -->
     <record id="view_amazon_product_mapping_tree" model="ir.ui.view">
@@ -60,11 +62,6 @@
     <!-- ===============================
          ORDER MAPPINGS
     ================================ -->
-    <menuitem id="menu_amazon_order_mappings"
-              name="Order Mappings"
-              parent="menu_amazon_root"
-              action="action_amazon_order_mapping"
-              sequence="30"/>
 
     <!-- Action for Order Mappings -->
     <record id="action_amazon_order_mapping" model="ir.actions.act_window">
@@ -77,6 +74,13 @@
             </p>
         </field>
     </record>
+
+    <!-- Menu for Order Mappings -->
+    <menuitem id="menu_amazon_order_mappings"
+              name="Order Mappings"
+              parent="menu_amazon_root"
+              action="action_amazon_order_mapping"
+              sequence="30"/>
 
     <!-- Tree View for Order Mapping -->
     <record id="view_amazon_order_mapping_tree" model="ir.ui.view">
