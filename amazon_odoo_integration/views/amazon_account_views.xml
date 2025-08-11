@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_amazon_root"
+              name="Amazon Connector"
+              sequence="10"/>
+
+    <!-- Action for Accounts -->
+    <record id="action_amazon_account" model="ir.actions.act_window">
+        <field name="name">Amazon Accounts</field>
+        <field name="res_model">amazon.account</field>
+        <field name="view_mode">tree,form</field>
+        <!-- Optional: Default tree view -->
+        <field name="view_id" ref="view_amazon_account_tree"/>
+    </record>
+
+    <!-- Menu for Accounts -->
+    <menuitem id="menu_amazon_accounts"
+              name="Accounts"
+              parent="menu_amazon_root"
+              action="action_amazon_account"
+              sequence="1"/>
+
+    <!-- Tree View -->
+    <record id="view_amazon_account_tree" model="ir.ui.view">
+        <field name="name">amazon.account.tree</field>
+        <field name="model">amazon.account</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="account_name"/>
+                <field name="home_marketplace"/>
+                <field name="api_type"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_amazon_account_form" model="ir.ui.view">
+        <field name="name">amazon.account.form</field>
+        <field name="model">amazon.account</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Account">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="account_name"/>
+                        <field name="home_marketplace"/>
+                        <field name="api_type"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="Credentials">
+                        <field name="client_id"/>
+                        <field name="client_secret" password="True"/>
+                        <field name="refresh_token"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

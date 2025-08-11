@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===============================
+         PRODUCT MAPPINGS
+    ================================ -->
+    <menuitem id="menu_amazon_product_mappings"
+              name="Product Mappings"
+              parent="menu_amazon_root"
+              action="action_amazon_product_mapping"
+              sequence="20"/>
+
+    <!-- Action for Product Mappings -->
+    <record id="action_amazon_product_mapping" model="ir.actions.act_window">
+        <field name="name">Amazon Product Mappings</field>
+        <field name="res_model">amazon.product.mapping</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create the link between Amazon SKUs and Odoo products here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Tree View for Product Mapping -->
+    <record id="view_amazon_product_mapping_tree" model="ir.ui.view">
+        <field name="name">amazon.product.mapping.tree</field>
+        <field name="model">amazon.product.mapping</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="amazon_sku"/>
+                <field name="asin"/>
+                <field name="product_id"/>
+                <field name="account_id"/>
+                <field name="marketplace"/>
+                <field name="last_sync"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Product Mapping -->
+    <record id="view_amazon_product_mapping_form" model="ir.ui.view">
+        <field name="name">amazon.product.mapping.form</field>
+        <field name="model">amazon.product.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Product Mapping">
+                <sheet>
+                    <group>
+                        <field name="amazon_sku"/>
+                        <field name="asin"/>
+                        <field name="product_id"/>
+                        <field name="account_id"/>
+                        <field name="marketplace"/>
+                        <field name="last_sync" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===============================
+         ORDER MAPPINGS
+    ================================ -->
+    <menuitem id="menu_amazon_order_mappings"
+              name="Order Mappings"
+              parent="menu_amazon_root"
+              action="action_amazon_order_mapping"
+              sequence="30"/>
+
+    <!-- Action for Order Mappings -->
+    <record id="action_amazon_order_mapping" model="ir.actions.act_window">
+        <field name="name">Amazon Order Mappings</field>
+        <field name="res_model">amazon.order.mapping</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Map Amazon orders to Odoo sales orders here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Tree View for Order Mapping -->
+    <record id="view_amazon_order_mapping_tree" model="ir.ui.view">
+        <field name="name">amazon.order.mapping.tree</field>
+        <field name="model">amazon.order.mapping</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="amazon_order_id"/>
+                <field name="sale_order_id"/>
+                <field name="account_id"/>
+                <field name="marketplace"/>
+                <field name="last_sync"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for Order Mapping -->
+    <record id="view_amazon_order_mapping_form" model="ir.ui.view">
+        <field name="name">amazon.order.mapping.form</field>
+        <field name="model">amazon.order.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Order Mapping">
+                <sheet>
+                    <group>
+                        <field name="amazon_order_id"/>
+                        <field name="sale_order_id"/>
+                        <field name="account_id"/>
+                        <field name="marketplace"/>
+                        <field name="last_sync" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

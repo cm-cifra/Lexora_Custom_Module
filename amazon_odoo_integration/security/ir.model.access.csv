@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_amazon_account,access_amazon_account,model_amazon_account,,1,1,1,1
+access_amazon_product_mapping,access_amazon_product_mapping,model_amazon_product_mapping,,1,1,1,1
+access_amazon_order_mapping,access_amazon_order_mapping,model_amazon_order_mapping,,1,1,1,1
