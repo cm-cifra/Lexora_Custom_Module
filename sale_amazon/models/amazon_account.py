@@ -388,39 +388,40 @@ class AmazonAccount(models.Model):
                 [('api_ref', 'in', available_marketplace_api_refs)]
             )
 
-    def _sync_orders(self, auto_commit=True):
-        """ Synchronize the accounts' sales orders that were recently updated on Amazon.
+    def _sync_orders(self, auto_commit=True, sync_all=False, start_date=None):
+        """
+        Synchronize the accounts' sales orders from Amazon.
+        If sync_all=True, fetches all orders since start_date (default: 2 years ago).
 
-        If called on an empty recordset, the orders of all active accounts are synchronized instead.
-
-        Note: This method is called by the `ir_cron_sync_amazon_orders` cron.
-
-        :param bool auto_commit: Whether the database cursor should be committed as soon as an order
-                                 is successfully synchronized.
-        :return: None
+        :param bool auto_commit: Commit after each order if True.
+        :param bool sync_all: If True, ignores last_orders_sync and fetches from start_date.
+        :param datetime start_date: The start date for fetching orders.
         """
         accounts = self or self.search([])
+        from datetime import datetime, timedelta
+
+        # Default start date for full sync
+        if sync_all and not start_date:
+            start_date = datetime.utcnow() - timedelta(days=720)  # 2 years ago
+
         for account in accounts:
-            account = account[0]  # Avoid pre-fetching after each cache invalidation.
+            account = account[0]
             amazon_utils.ensure_account_is_set_up(account)
 
-            # The last synchronization date of the account is used as the lower limit on the orders'
-            # last status update date. The upper limit is determined by the API and returned with
-            # the request response, then saved on the account if the synchronization goes through.
-            last_updated_after = account.last_orders_sync  # Lower limit for pulling orders.
-            status_update_upper_limit = None  # Upper limit of synchronized orders.
+            if sync_all:
+                last_updated_after = start_date
+            else:
+                last_updated_after = account.last_orders_sync
 
-            # Pull all recently updated orders and save the progress during synchronization.
+            status_update_upper_limit = None
             payload = {
                 'LastUpdatedAfter': last_updated_after.isoformat(sep='T'),
                 'MarketplaceIds': ','.join(account.active_marketplace_ids.mapped('api_ref')),
             }
+
             try:
-                # Orders are pulled in batches of up to 100 orders. If more can be synchronized, the
-                # request results are paginated and the next page holds another batch.
                 has_next_page = True
                 while has_next_page:
-                    # Pull the next batch of orders data.
                     orders_batch_data, has_next_page = amazon_utils.pull_batch_data(
                         account, 'getOrders', payload
                     )
@@ -429,63 +430,52 @@ class AmazonAccount(models.Model):
                         orders_batch_data['LastUpdatedBefore']
                     )
 
-                    # Process the batch one order data at a time.
                     for order_data in orders_data:
                         try:
                             if auto_commit:
                                 with self.env.cr.savepoint():
                                     account._process_order_data(order_data)
-                            else:  # Avoid the savepoint in testing
+                            else:
                                 account._process_order_data(order_data)
                         except amazon_utils.AmazonRateLimitError:
-                            raise  # Don't treat a rate limit error as a business error.
+                            raise
                         except Exception as error:
                             amazon_order_ref = order_data['AmazonOrderId']
                             if isinstance(error, psycopg2.OperationalError) \
-                                and error.pgcode in CONCURRENCY_ERRORS:
+                                    and error.pgcode in CONCURRENCY_ERRORS:
                                 _logger.info(
-                                    "A concurrency error occurred while processing the order data "
-                                    "with amazon_order_ref %s for Amazon account with id %s. "
-                                    "Discarding the error to trigger the retry mechanism.",
+                                    "Concurrency error for order %s (account %s)",
                                     amazon_order_ref, account.id
                                 )
-                                # Let the error bubble up so that either the request can be retried
-                                # up to 5 times or the cron job rollbacks the cursor and reschedules
-                                # itself later, depending on which of the two called this method.
                                 raise
                             else:
                                 _logger.warning(
-                                    "A business error occurred while processing the order data "
-                                    "with amazon_order_ref %s for Amazon account with id %s. "
-                                    "Skipping the order data and moving to the next order.",
+                                    "Error processing order %s for account %s, skipping.",
                                     amazon_order_ref, account.id,
                                     exc_info=True
                                 )
-                                # Dismiss business errors to allow the synchronization to skip the
-                                # problematic orders and require synchronizing them manually.
                                 self.env.cr.rollback()
                                 account._handle_sync_failure(
                                     flow='order_sync', amazon_order_ref=amazon_order_ref
                                 )
-                                continue  # Skip these order data and resume with the next ones.
+                                continue
 
-                        # The synchronization of this order went through, use its last status update
-                        # as a backup and set it to be the last synchronization date of the account.
                         last_order_update = dateutil.parser.parse(order_data['LastUpdateDate'])
                         account.last_orders_sync = last_order_update.replace(tzinfo=None)
                         if auto_commit:
                             with amazon_utils.preserve_credentials(account):
-                                self.env.cr.commit()  # Commit to mitigate an eventual cron kill.
+                                self.env.cr.commit()
+
             except amazon_utils.AmazonRateLimitError as error:
                 _logger.info(
-                    "Rate limit reached while synchronizing sales orders for Amazon account with "
-                    "id %s. Operation: %s", account.id, error.operation
+                    "Rate limit reached for account %s. Operation: %s",
+                    account.id, error.operation
                 )
-                continue  # The remaining orders will be pulled later when the cron runs again.
+                continue
 
-            # There are no more orders to pull and the synchronization went through. Set the API
-            # upper limit on order status update to be the last synchronization date of the account.
-            account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
+            # Update the last sync date only if not doing a full historical pull
+            if not sync_all:
+                account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
 
     def _sync_order_by_reference(self, amazon_order_ref):
         """ Synchronize an order based on its Amazon order reference.
@@ -642,7 +632,29 @@ class AmazonAccount(models.Model):
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
-
+        amazon_order_ref = order_data['AmazonOrderId']
+        anonymized_email = order_data['BuyerInfo'].get('BuyerEmail', '')
+        buyer_name = order_data['BuyerInfo'].get('BuyerName', '')
+        fulfillment_channel = order_data['FulfillmentChannel']
+        shipping_address_info = order_data.get('ShippingAddress', {})
+        shipping_address_name = shipping_address_info.get('Name', '')
+        street = shipping_address_info.get('AddressLine1', '')
+        address_line2 = shipping_address_info.get('AddressLine2', '')
+        address_line3 = shipping_address_info.get('AddressLine3', '')
+        street2 = "%s %s" % (address_line2, address_line3) if address_line2 or address_line3 \
+            else None
+        zip_code = shipping_address_info.get('PostalCode', '')
+        city = shipping_address_info.get('City', '')
+        country_code = shipping_address_info.get('CountryCode', '')
+        state_code = shipping_address_info.get('StateOrRegion', '')
+        phone = shipping_address_info.get('Phone', '')
+        is_company = shipping_address_info.get('AddressType') == 'Commercial'
+        country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
+        state = self.env['res.country.state'].search([
+            ('country_id', '=', country.id),
+            '|', ('code', '=ilike', state_code), ('name', '=ilike', state_code),
+        ], limit=1)
+   
         shipping_address = order_data.get('ShippingAddress', {})
 
         order_vals = {
@@ -650,7 +662,7 @@ class AmazonAccount(models.Model):
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': contact_partner.id,
+            'partner_id': 'Amazon Sales',
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line) for line in order_lines_values],
             'invoice_status': 'no',
@@ -666,9 +678,9 @@ class AmazonAccount(models.Model):
 
             # ✅ Correct custom field mapping using order_data
             'purchase_order': amazon_order_ref,
-            'order_customer': order_data.get('BuyerName'),
-            'order_address': shipping_address.get('AddressLine1'),
-            'order_phone': shipping_address.get('Phone'),
+            'order_customer': buyer_name,
+            'order_address':shipping_address_info,
+            'order_phone': phone,
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
