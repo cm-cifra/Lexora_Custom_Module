@@ -1052,11 +1052,8 @@ class AmazonAccount(models.Model):
         self.ensure_one()
         product = self.env['product.product'].search([
             *self.env['product.product']._check_company_domain(self.company_id),
-            '|',
             ('default_code', '=', internal_reference),
-            ('amazon_sku', '=', internal_reference),
         ], limit=1)
-
         if not product and fallback:  # Fallback to the default product
             product = self.env.ref('sale_amazon.%s' % default_xmlid, raise_if_not_found=False)
         if not product and fallback:  # Restore the default product if it was deleted
