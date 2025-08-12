@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
-    'name': "Amazon Connector",
+    'name': "custom Amazon Connector",
     'summary': "Import Amazon orders and sync deliveries",
     'description': """
 Import your Amazon orders in Odoo and synchronize deliveries
