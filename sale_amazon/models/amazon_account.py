@@ -332,7 +332,8 @@ class AmazonAccount(models.Model):
         }
 
     def action_sync_orders(self):
-        self._sync_orders()
+    # Call with sync_all=True to fetch all orders, including "precious" ones.
+        self._sync_orders(sync_all=True)
 
     def action_sync_pickings(self):
         self.env['stock.picking']._sync_pickings(tuple(self.ids))
@@ -402,7 +403,7 @@ class AmazonAccount(models.Model):
 
         # Default start date for full sync
         if sync_all and not start_date:
-            start_date = datetime.utcnow() - timedelta(days=720)  # 2 years ago
+            start_date = datetime.utcnow() - timedelta(days=30)  # 1 month ago
 
         for account in accounts:
             account = account[0]
@@ -422,8 +423,12 @@ class AmazonAccount(models.Model):
             try:
                 has_next_page = True
                 while has_next_page:
+                    # Example: fetch only orders with a specific tag or custom field indicating "precious"
                     orders_batch_data, has_next_page = amazon_utils.pull_batch_data(
-                        account, 'getOrders', payload
+                        account,
+                        'getOrders',
+                        payload,
+                        additional_filters={'OrderType': 'precious'}  # hypothetical filter
                     )
                     orders_data = orders_batch_data['Orders']
                     status_update_upper_limit = dateutil.parser.parse(
