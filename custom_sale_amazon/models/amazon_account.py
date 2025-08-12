@@ -332,8 +332,7 @@ class AmazonAccount(models.Model):
         }
 
     def action_sync_orders(self):
-    # Call with sync_all=True to fetch all orders, including "precious" ones.
-        self._sync_orders(sync_all=True)
+        self._sync_orders()
 
     def action_sync_pickings(self):
         self.env['stock.picking']._sync_pickings(tuple(self.ids))
@@ -389,98 +388,104 @@ class AmazonAccount(models.Model):
                 [('api_ref', 'in', available_marketplace_api_refs)]
             )
 
-    def _sync_orders(self, auto_commit=True, sync_all=False, start_date=None):
-        """
-        Synchronize the accounts' sales orders from Amazon.
-        If sync_all=True, fetches all orders since start_date (default: 2 years ago).
+    def _sync_orders(self, auto_commit=True):
+        """ Synchronize the accounts' sales orders that were recently updated on Amazon.
 
-        :param bool auto_commit: Commit after each order if True.
-        :param bool sync_all: If True, ignores last_orders_sync and fetches from start_date.
-        :param datetime start_date: The start date for fetching orders.
+        If called on an empty recordset, the orders of all active accounts are synchronized instead.
+
+        Note: This method is called by the `ir_cron_sync_amazon_orders` cron.
+
+        :param bool auto_commit: Whether the database cursor should be committed as soon as an order
+                                 is successfully synchronized.
+        :return: None
         """
         accounts = self or self.search([])
-        from datetime import datetime, timedelta
-
-        # Default start date for full sync
-        if sync_all and not start_date:
-            start_date = datetime.utcnow() - timedelta(days=30)  # 1 month ago
-
         for account in accounts:
-            account = account[0]
+            account = account[0]  # Avoid pre-fetching after each cache invalidation.
             amazon_utils.ensure_account_is_set_up(account)
 
-            if sync_all:
-                last_updated_after = start_date
-            else:
-                last_updated_after = account.last_orders_sync
+            # The last synchronization date of the account is used as the lower limit on the orders'
+            # last status update date. The upper limit is determined by the API and returned with
+            # the request response, then saved on the account if the synchronization goes through.
+            last_updated_after = account.last_orders_sync  # Lower limit for pulling orders.
+            status_update_upper_limit = None  # Upper limit of synchronized orders.
 
-            status_update_upper_limit = None
+            # Pull all recently updated orders and save the progress during synchronization.
             payload = {
                 'LastUpdatedAfter': last_updated_after.isoformat(sep='T'),
                 'MarketplaceIds': ','.join(account.active_marketplace_ids.mapped('api_ref')),
             }
-
             try:
+                # Orders are pulled in batches of up to 100 orders. If more can be synchronized, the
+                # request results are paginated and the next page holds another batch.
                 has_next_page = True
                 while has_next_page:
-                    # Example: fetch only orders with a specific tag or custom field indicating "precious"
+                    # Pull the next batch of orders data.
                     orders_batch_data, has_next_page = amazon_utils.pull_batch_data(
-                        account,
-                        'getOrders',
-                        payload,
-                        additional_filters={'OrderType': 'precious'}  # hypothetical filter
+                        account, 'getOrders', payload
                     )
                     orders_data = orders_batch_data['Orders']
                     status_update_upper_limit = dateutil.parser.parse(
                         orders_batch_data['LastUpdatedBefore']
                     )
 
+                    # Process the batch one order data at a time.
                     for order_data in orders_data:
                         try:
                             if auto_commit:
                                 with self.env.cr.savepoint():
                                     account._process_order_data(order_data)
-                            else:
+                            else:  # Avoid the savepoint in testing
                                 account._process_order_data(order_data)
                         except amazon_utils.AmazonRateLimitError:
-                            raise
+                            raise  # Don't treat a rate limit error as a business error.
                         except Exception as error:
                             amazon_order_ref = order_data['AmazonOrderId']
                             if isinstance(error, psycopg2.OperationalError) \
-                                    and error.pgcode in CONCURRENCY_ERRORS:
+                                and error.pgcode in CONCURRENCY_ERRORS:
                                 _logger.info(
-                                    "Concurrency error for order %s (account %s)",
+                                    "A concurrency error occurred while processing the order data "
+                                    "with amazon_order_ref %s for Amazon account with id %s. "
+                                    "Discarding the error to trigger the retry mechanism.",
                                     amazon_order_ref, account.id
                                 )
+                                # Let the error bubble up so that either the request can be retried
+                                # up to 5 times or the cron job rollbacks the cursor and reschedules
+                                # itself later, depending on which of the two called this method.
                                 raise
                             else:
                                 _logger.warning(
-                                    "Error processing order %s for account %s, skipping.",
+                                    "A business error occurred while processing the order data "
+                                    "with amazon_order_ref %s for Amazon account with id %s. "
+                                    "Skipping the order data and moving to the next order.",
                                     amazon_order_ref, account.id,
                                     exc_info=True
                                 )
+                                # Dismiss business errors to allow the synchronization to skip the
+                                # problematic orders and require synchronizing them manually.
                                 self.env.cr.rollback()
                                 account._handle_sync_failure(
                                     flow='order_sync', amazon_order_ref=amazon_order_ref
                                 )
-                                continue
+                                continue  # Skip these order data and resume with the next ones.
 
+                        # The synchronization of this order went through, use its last status update
+                        # as a backup and set it to be the last synchronization date of the account.
                         last_order_update = dateutil.parser.parse(order_data['LastUpdateDate'])
                         account.last_orders_sync = last_order_update.replace(tzinfo=None)
                         if auto_commit:
                             with amazon_utils.preserve_credentials(account):
-                                self.env.cr.commit()
-
+                                self.env.cr.commit()  # Commit to mitigate an eventual cron kill.
             except amazon_utils.AmazonRateLimitError as error:
                 _logger.info(
-                    "Rate limit reached for account %s. Operation: %s",
-                    account.id, error.operation
+                    "Rate limit reached while synchronizing sales orders for Amazon account with "
+                    "id %s. Operation: %s", account.id, error.operation
                 )
-                continue
+                continue  # The remaining orders will be pulled later when the cron runs again.
 
-            # Update the last sync date only if not doing a full historical pull
-            if not sync_all:
-                account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
+            # There are no more orders to pull and the synchronization went through. Set the API
+            # upper limit on order status update to be the last synchronization date of the account.
+            account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
 
     def _sync_order_by_reference(self, amazon_order_ref):
         """ Synchronize an order based on its Amazon order reference.
