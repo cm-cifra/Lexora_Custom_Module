@@ -19,7 +19,7 @@
         <field name="name">amazon.account.form</field>
         <field name="model">amazon.account</field>
         <field name="arch" type="xml">
-            <form string="Amazon Account">
+            <form string="custom Amazon Account ">
                 <header invisible="not id">
                     <button name="action_recover_order"
                             string="Recover Order"
