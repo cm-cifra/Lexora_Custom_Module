@@ -1,56 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Action to open Amazon Accounts list -->
     <record id="list_amazon_account_action" model="ir.actions.act_window">
-        <field name="name">Amazon Accounts</field>
+        <field name="name">Manage Amazon Accounts</field>
         <field name="res_model">amazon.account</field>
         <field name="view_mode">tree,form</field>
         <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                custom Register your Amazon account
-            </p><p>
-            Amazon accounts correspond to Amazon Seller Central accounts.
-        </p><p>
-            Register yours to start synchronizing your orders into Odoo.
-        </p>
+                Register and manage your Amazon Seller Central accounts here.
+            </p>
+            <p>
+                Amazon accounts are used to connect your Amazon Seller Central to Odoo.
+            </p>
+            <p>
+                Register your accounts to start synchronizing orders, products, and more.
+            </p>
         </field>
     </record>
 
+    <!-- Action to open Amazon Marketplaces list -->
     <record id="custom_list_amazon_marketplace_action" model="ir.actions.act_window">
         <field name="name">Amazon Marketplaces</field>
         <field name="res_model">amazon.marketplace</field>
         <field name="view_mode">tree,form</field>
     </record>
 
+    <!-- Inherit the configuration settings form to add custom buttons -->
     <record id="custom_res_config_settings_view_form" model="ir.ui.view">
-        <field name="name">res.config.settings.view.form.inherit.sale.amazon</field>
+        <field name="name">res.config.settings.view.form.inherit.sale.amazon.custom</field>
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[@name='amazon_connector']" position="inside">
                 <div class="mt16">
-                    <div>
+                    <!-- Button to open Amazon Accounts list -->
+                    <div class="mb8">
                         <button name="%(sale_amazon.list_amazon_account_action)d"
                                 string="Amazon Accounts"
-                                icon="oi-arrow-right"
+                                icon="fa-shopping-cart"
                                 type="action"
-                                class="btn-link"/>
+                                class="btn-primary"/>
                     </div>
-                    <div>
+                    <!-- Button to open Amazon Marketplaces list -->
+                    <div class="mb8">
                         <button name="%(sale_amazon.list_amazon_marketplace_action)d"
                                 string="Amazon Marketplaces"
-                                icon="oi-arrow-right"
+                                icon="fa-globe"
                                 type="action"
-                                class="btn-link"
+                                class="btn-secondary"
                                 groups="base.group_no_one"/>
                     </div>
+                    <!-- Button for default products (assuming method exists) -->
                     <div>
                         <button name="action_view_default_amazon_products"
                                 string="Default Products"
-                                icon="oi-arrow-right"
+                                icon="fa-box-open"
                                 type="object"
-                                class="btn-link"
+                                class="btn-info"
                                 groups="base.group_no_one"/>
                     </div>
                 </div>

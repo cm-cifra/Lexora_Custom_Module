@@ -1,26 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
+    <!-- Extend the sale.order tree view to include amazon_order_ref -->
     <record id="custom_sale_order_tree" model="ir.ui.view">
-        <field name="name">amazon.order.tree</field>
+        <field name="name">sale.order.tree.custom</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.sale_order_tree"/>
         <field name="arch" type="xml">
             <field name="name" position="after">
-                <field name="amazon_order_ref" groups="base.group_no_one" optional="hide"/>
+                <field name="amazon_order_ref" 
+                       groups="base.group_no_one" 
+                       optional="hide"/>
             </field>
         </field>
     </record>
 
+    <!-- Customize the sale.order form view to include Amazon channel info and order reference -->
     <record id="custom_amazon_order_view_form" model="ir.ui.view">
-        <field name="name">amazon.order.form</field>
+        <field name="name">sale.order.form.custom</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
+            <!-- Place Amazon channel field in header, hidden from users -->
             <header position="inside">
                 <field name="amazon_channel" invisible="1"/>
             </header>
-            <div name="button_box" position="after">
+            <!-- Add badges indicating Fulfillment by Merchant / Amazon -->
+            <div name="button_box" position="after" class="mt-2">
                 <div class="badge rounded-pill text-bg-info fs-6 float-end"
                      invisible="amazon_channel != 'fbm'">
                     Fulfilled by Merchant
@@ -30,15 +36,20 @@
                     Fulfilled by Amazon
                 </div>
             </div>
+
+            <!-- Add lock button for auto-done setting visibility -->
             <t groups="sale.group_auto_done_setting" position="after">
                 <t groups="!sale.group_auto_done_setting">
-                    <!-- Marketplace orders can always be manually locked -->
-                    <button name="action_lock" type="object" string="Lock"
-                        help="If the sale is locked, you can not modify it anymore. However, you will still be able to invoice or deliver."
-                        invisible="locked or state != 'sale' or not amazon_order_ref"
-                        groups="sales_team.group_sale_manager"/>
+                    <button name="action_lock" 
+                            type="object" 
+                            string="Lock" 
+                            help="Lock the sale order to prevent further modifications."
+                            invisible="locked or state != 'sale' or not amazon_order_ref"
+                            groups="sales_team.group_sale_manager"/>
                 </t>
             </t>
+
+            <!-- Show amazon_order_ref field conditionally inside order details -->
             <group name="order_details" position="inside">
                 <field name="amazon_order_ref"
                        invisible="1"
@@ -50,8 +61,9 @@
         </field>
     </record>
 
+    <!-- Extend the sales order search filter to include amazon_order_ref -->
     <record id="custom_view_sales_order_filter" model="ir.ui.view">
-        <field name="name">amazon.order.search</field>
+        <field name="name">sale.order.search.custom</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sales_order_filter"/>
         <field name="arch" type="xml">
