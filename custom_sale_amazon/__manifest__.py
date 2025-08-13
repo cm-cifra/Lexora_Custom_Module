@@ -29,7 +29,7 @@ Key Features
     "maintainer": "Your Company",
     "depends": [
         "sale_management",
-        "stock",
+        "stock","sale_amazon",
         "delivery",  # modern module for carriers/shipments
         # add "mail" if you rely on templates or chatter features
         "mail",
