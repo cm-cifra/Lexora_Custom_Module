@@ -620,61 +620,35 @@ class AmazonAccount(models.Model):
         ).with_company(self.company_id).create(order_vals)
 
     def _prepare_order_values(self, order_data):
-    # Prepare the order line values.
+        # Prepare the order line values.
         shipping_code = order_data.get('ShipServiceLevel')
         shipping_product = self._find_matching_product(
             shipping_code, 'shipping_product', 'Shipping', 'service'
         )
-
         currency = self.env['res.currency'].with_context(active_test=False).search(
             [('name', '=', order_data['OrderTotal']['CurrencyCode'])], limit=1
         )
-
         amazon_order_ref = order_data['AmazonOrderId']
         contact_partner, delivery_partner = self._find_or_create_partners_from_data(order_data)
         fiscal_position = self.env['account.fiscal.position'].with_company(
             self.company_id
         )._get_fiscal_position(contact_partner, delivery_partner)
-
         order_lines_values = self._prepare_order_lines_values(
             order_data, currency, fiscal_position, shipping_product
         )
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
-        amazon_order_ref = order_data['AmazonOrderId']
-        anonymized_email = order_data['BuyerInfo'].get('BuyerEmail', '')
-        buyer_name = order_data['BuyerInfo'].get('BuyerName', '')
-        fulfillment_channel = order_data['FulfillmentChannel']
-        shipping_address_info = order_data.get('ShippingAddress', {})
-        shipping_address_name = shipping_address_info.get('Name', '')
-        street = shipping_address_info.get('AddressLine1', '')
-        address_line2 = shipping_address_info.get('AddressLine2', '')
-        address_line3 = shipping_address_info.get('AddressLine3', '')
-        street2 = "%s %s" % (address_line2, address_line3) if address_line2 or address_line3 \
-            else None
-        zip_code = shipping_address_info.get('PostalCode', '')
-        city = shipping_address_info.get('City', '')
-        country_code = shipping_address_info.get('CountryCode', '')
-        state_code = shipping_address_info.get('StateOrRegion', '')
-        phone = shipping_address_info.get('Phone', '')
-        is_company = shipping_address_info.get('AddressType') == 'Commercial'
-        country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
-        state = self.env['res.country.state'].search([
-            ('country_id', '=', country.id),
-            '|', ('code', '=ilike', state_code), ('name', '=ilike', state_code),
-        ], limit=1)
-   
-        shipping_address = order_data.get('ShippingAddress', {})
-
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
+            # The order is first created unlocked and later locked to trigger the creation of a
+            # stock picking if fulfilled by merchant.
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': 'Amazon Sales',
+            'partner_id': contact_partner.id,
             'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line) for line in order_lines_values],
+            'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
             'invoice_status': 'no',
             'partner_shipping_id': delivery_partner.id,
             'require_signature': False,
@@ -685,19 +659,10 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-
-            # ✅ Correct custom field mapping using order_data
-            'purchase_order': amazon_order_ref,
-            'order_customer': buyer_name,
-            'order_address':shipping_address_info,
-            'order_phone': phone,
         }
-
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
-
         return order_vals
-
 
     def _find_or_create_partners_from_data(self, order_data):
         """ Find or create the contact and delivery partners based on the provided order data.
