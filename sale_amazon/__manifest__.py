@@ -2,7 +2,6 @@
 
 {
     'name': "Amazon Connector",
-    'technical_name': "sale_amazon",
     'summary': "Import Amazon orders and sync deliveries",
     'description': """
 Import your Amazon orders in Odoo and synchronize deliveries
@@ -10,17 +9,16 @@ Import your Amazon orders in Odoo and synchronize deliveries
 
 Key Features
 ------------
-
 * Import orders from multiple accounts and marketplaces.
 * Orders are matched with Odoo products based on their internal reference (SKU in Amazon).
 * Deliveries confirmed in Odoo are synchronized in Amazon.
 * Support for both Fulfilment by Amazon (FBA) and Fulfilment by Merchant (FBM):
-    * FBA: A stock location and stock moves allow monitoring your stock in Amazon Fulfilment Centers.
+    * FBA: A stock location and stock moves allow to monitor your stock in Amazon Fulfilment Centers.
     * FBM: Delivery notifications are sent to Amazon for each confirmed picking (partial delivery friendly).
 """,
-    'category': 'Sales',
+    'category': 'Sales/Sales',
     'sequence': 320,
-    'version': '17.0.1.0.0',
+    'version': '1.1',
     'application': True,
     'depends': ['sale_management', 'stock_delivery'],
     'data': [
@@ -39,5 +37,5 @@ Key Features
         'views/stock_picking_views.xml',
         'wizards/recover_order_wizard_views.xml',
     ],
-    'license': 'OEEL-1',  # Odoo Enterprise Edition License v1.0
+    'license': 'OEEL-1',
 }
