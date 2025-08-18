@@ -152,7 +152,6 @@
         <field name="seller_central_url">https://sellercentral.amazon.sg</field>
         <field name="tax_included">True</field>
     </record>
-
     <!-- Default products -->
     <record id="default_product" model="product.product">
         <field name="name">Amazon Sale</field>
@@ -169,7 +168,7 @@
         <field name="purchase_ok">False</field>
     </record>
     <function model="product.product" name="_configure_for_amazon">
-        <value eval="[ref('sale_amazon.default_product'), ref('sale_amazon.shipping_product')]"/>
+        <value eval="[ref('custom_sale_amazon.default_product'), ref('custom_sale_amazon.shipping_product')]"/>
     </function>
 
 </odoo>
