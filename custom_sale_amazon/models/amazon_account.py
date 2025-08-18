@@ -666,7 +666,7 @@ class AmazonAccount(models.Model):
    
         shipping_address = order_data.get('ShippingAddress', {})
 
-         order_vals = {
+        order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
             # The order is first created unlocked and later locked to trigger the creation of a
