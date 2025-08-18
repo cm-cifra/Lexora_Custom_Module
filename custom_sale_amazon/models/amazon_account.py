@@ -666,14 +666,16 @@ class AmazonAccount(models.Model):
    
         shipping_address = order_data.get('ShippingAddress', {})
 
-        order_vals = {
+         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
+            # The order is first created unlocked and later locked to trigger the creation of a
+            # stock picking if fulfilled by merchant.
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': 'Amazon Sales',
+            'partner_id': contact_partner.id,
             'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line) for line in order_lines_values],
+            'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
             'invoice_status': 'no',
             'partner_shipping_id': delivery_partner.id,
             'require_signature': False,
@@ -684,13 +686,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-
-            # ✅ Correct custom field mapping using order_data
-            'purchase_order': amazon_order_ref,
-            'order_customer': buyer_name,
-            'order_address':shipping_address_info,
-            'order_phone': phone,
         }
+
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
