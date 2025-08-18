@@ -13,10 +13,9 @@ from odoo import _, api, exceptions, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY as CONCURRENCY_ERRORS
 
-from odoo.addons.sale_amazon import const, utils as amazon_utils
-from odoo.addons.sale_amazon.controllers.onboarding import compute_oauth_signature
-
-
+ 
+from .. import const, utils as amazon_utils
+from ..controllers.onboarding import compute_oauth_signature
 _logger = logging.getLogger(__name__)
 
 
@@ -605,76 +604,51 @@ class AmazonAccount(models.Model):
         return order
 
     def _create_order_from_data(self, order_data):
-        """ Create a new sales order based on the provided order data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to create a sales order from.
-        :return: The newly created sales order.
-        :rtype: record of `sale.order`
-        """
         self.ensure_one()
+
+        # Avoid duplicate orders
+        existing_order = self.env['sale.order'].search([
+            ('amazon_order_ref', '=', order_data['AmazonOrderId']),
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        if existing_order:
+            return existing_order
+
         order_vals = self._prepare_order_values(order_data)
         return self.env['sale.order'].with_context(
             mail_create_nosubscribe=True
-        ).with_company(self.company_id).create(order_vals)
+    ).with_company(self.company_id).create(order_vals)
+
 
     def _prepare_order_values(self, order_data):
-    # Prepare the order line values.
+        # Prepare the order line values.
         shipping_code = order_data.get('ShipServiceLevel')
         shipping_product = self._find_matching_product(
             shipping_code, 'shipping_product', 'Shipping', 'service'
         )
-
         currency = self.env['res.currency'].with_context(active_test=False).search(
             [('name', '=', order_data['OrderTotal']['CurrencyCode'])], limit=1
         )
-
         amazon_order_ref = order_data['AmazonOrderId']
         contact_partner, delivery_partner = self._find_or_create_partners_from_data(order_data)
         fiscal_position = self.env['account.fiscal.position'].with_company(
             self.company_id
         )._get_fiscal_position(contact_partner, delivery_partner)
-
         order_lines_values = self._prepare_order_lines_values(
             order_data, currency, fiscal_position, shipping_product
         )
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
-        amazon_order_ref = order_data['AmazonOrderId']
-        anonymized_email = order_data['BuyerInfo'].get('BuyerEmail', '')
-        buyer_name = order_data['BuyerInfo'].get('BuyerName', '')
-        fulfillment_channel = order_data['FulfillmentChannel']
-        shipping_address_info = order_data.get('ShippingAddress', {})
-        shipping_address_name = shipping_address_info.get('Name', '')
-        street = shipping_address_info.get('AddressLine1', '')
-        address_line2 = shipping_address_info.get('AddressLine2', '')
-        address_line3 = shipping_address_info.get('AddressLine3', '')
-        street2 = "%s %s" % (address_line2, address_line3) if address_line2 or address_line3 \
-            else None
-        zip_code = shipping_address_info.get('PostalCode', '')
-        city = shipping_address_info.get('City', '')
-        country_code = shipping_address_info.get('CountryCode', '')
-        state_code = shipping_address_info.get('StateOrRegion', '')
-        phone = shipping_address_info.get('Phone', '')
-        is_company = shipping_address_info.get('AddressType') == 'Commercial'
-        country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
-        state = self.env['res.country.state'].search([
-            ('country_id', '=', country.id),
-            '|', ('code', '=ilike', state_code), ('name', '=ilike', state_code),
-        ], limit=1)
-   
-        shipping_address = order_data.get('ShippingAddress', {})
-
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
+           
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': 'Amazon Sales',
+            'order_customer': contact_partner.id,
             'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line) for line in order_lines_values],
+            'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
             'invoice_status': 'no',
             'partner_shipping_id': delivery_partner.id,
             'require_signature': False,
@@ -685,19 +659,12 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-
-            # ✅ Correct custom field mapping using order_data
-            'purchase_order': amazon_order_ref,
-            'order_customer': buyer_name,
-            'order_address':shipping_address_info,
-            'order_phone': phone,
+            'partner_id': 'Bell+Modern Amazon',  # Or from data if available
+              
         }
-
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
-
         return order_vals
-
 
     def _find_or_create_partners_from_data(self, order_data):
         """ Find or create the contact and delivery partners based on the provided order data.
@@ -806,26 +773,9 @@ class AmazonAccount(models.Model):
         return contact, delivery
 
     def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
-        """ Prepare the values for the order lines to create based on Amazon data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data related to the item data.
-        :param record currency: The currency of the sales order, as a `res.currency` record.
-        :param record fiscal_pos: The fiscal position of the sales order, as an
-                                  `account.fiscal.position` record.
-        :param record shipping_product: The shipping product matching the shipping code, as a
-                                        `product.product` record.
-        :return: The order lines values.
-        :rtype: dict
-        """
+      
         def pull_items_data(amazon_order_ref_):
-            """ Pull all item data for the order to synchronize.
-
-            :param str amazon_order_ref_: The Amazon reference of the order to synchronize.
-            :return: The items data.
-            :rtype: list
-            """
+          
             items_data_ = []
             # Order items are pulled in batches. If more order items than those returned can be
             # synchronized, the request results are paginated and the next page holds another batch.
