@@ -27,13 +27,7 @@ Key Features
     "website": "https://your-company.example.com",
     "author": "Your Company",
     "maintainer": "Your Company",
-    "depends": [
-        "sale_management",
-        "stock","sale_amazon",
-        "delivery",  # modern module for carriers/shipments
-        # add "mail" if you rely on templates or chatter features
-        "mail",
-    ],
+    'depends': ['sale_management', 'stock_delivery'],
     "data": [
         "security/ir.model.access.csv",
         "security/sale_amazon_security.xml",
