@@ -12,7 +12,9 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.http import request
 from odoo.tools import hmac as hmac_tool
 
-from odoo.addons.sale_amazon import utils as amazon_utils
+
+from .. import utils as amazon_utils
+from .. import const
 
 
 _logger = logging.getLogger(__name__)
