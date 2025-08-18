@@ -6,7 +6,7 @@ import logging
 from odoo import api, fields, models
 from odoo.tools import split_every
 
-from .. import utils as amazon_utils
+from odoo.addons.sale_amazon import utils as amazon_utils
 
 
 _logger = logging.getLogger(__name__)

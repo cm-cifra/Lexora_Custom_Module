@@ -21,22 +21,31 @@
                 <field name="amazon_channel" invisible="1"/>
             </header>
             <div name="button_box" position="after">
-                <div class="badge rounded-pill text-bg-info fs-6 float-end" invisible="amazon_channel != 'fbm'">
+                <div class="badge rounded-pill text-bg-info fs-6 float-end"
+                     invisible="amazon_channel != 'fbm'">
                     Fulfilled by Merchant
                 </div>
-                <div class="badge rounded-pill text-bg-info fs-6 float-end" invisible="amazon_channel != 'fba'">
+                <div class="badge rounded-pill text-bg-info fs-6 float-end"
+                     invisible="amazon_channel != 'fba'">
                     Fulfilled by Amazon
                 </div>
             </div>
             <t groups="sale.group_auto_done_setting" position="after">
                 <t groups="!sale.group_auto_done_setting">
                     <!-- Marketplace orders can always be manually locked -->
-                    <button name="action_lock" type="object" string="Lock" help="If the sale is locked, you can not modify it anymore. However, you will still be able to invoice or deliver." invisible="locked or state != 'sale' or not amazon_order_ref" groups="sales_team.group_sale_manager"/>
+                    <button name="action_lock" type="object" string="Lock"
+                        help="If the sale is locked, you can not modify it anymore. However, you will still be able to invoice or deliver."
+                        invisible="locked or state != 'sale' or not amazon_order_ref"
+                        groups="sales_team.group_sale_manager"/>
                 </t>
             </t>
             <group name="order_details" position="inside">
-                <field name="amazon_order_ref" invisible="1" groups="!base.group_no_one"/>
-                <field name="amazon_order_ref" invisible="not amazon_order_ref" groups="base.group_no_one"/>
+                <field name="amazon_order_ref"
+                       invisible="1"
+                       groups="!base.group_no_one"/>
+                <field name="amazon_order_ref"
+                       invisible="not amazon_order_ref"
+                       groups="base.group_no_one"/>
             </group>
         </field>
     </record>

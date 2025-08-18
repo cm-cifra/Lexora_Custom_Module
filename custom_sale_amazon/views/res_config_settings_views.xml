@@ -21,34 +21,11 @@
     </record>
 
     <!-- Action to open Amazon Marketplaces list -->
-    <record id="list_amazon_marketplace_action" model="ir.actions.act_window">
+    <record id="custom_list_amazon_marketplace_action" model="ir.actions.act_window">
         <field name="name">Amazon Marketplaces</field>
         <field name="res_model">amazon.marketplace</field>
         <field name="view_mode">tree,form</field>
     </record>
-
-    <!-- ================= Menus ================= -->
-
-    <!-- Top-level Amazon menu -->
-    <menuitem id="menu_amazon_root"
-              name="Amazon"
-              sequence="10"
-              parent=""
-              groups="base.group_user"/>
-
-    <!-- Submenu for Accounts -->
-    <menuitem id="menu_amazon_accounts"
-              name="Accounts"
-              parent="menu_amazon_root"
-              action="list_amazon_account_action"
-              sequence="20"/>
-
-    <!-- Submenu for Marketplaces -->
-    <menuitem id="menu_amazon_marketplaces"
-              name="Marketplaces"
-              parent="menu_amazon_root"
-              action="list_amazon_marketplace_action"
-              sequence="30"/>
 
     <!-- Inherit the configuration settings form to add custom buttons -->
     <record id="custom_res_config_settings_view_form" model="ir.ui.view">
