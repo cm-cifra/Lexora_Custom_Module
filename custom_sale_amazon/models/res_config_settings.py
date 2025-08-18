@@ -7,10 +7,10 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     def action_view_default_amazon_products(self):
-        default_product = self.env.ref('sale_amazon.default_product', raise_if_not_found=False) \
+        default_product = self.env.ref('custom_sale_amazon.default_product', raise_if_not_found=False) \
                           or self.env['product.product']._restore_data_product(
                               'Amazon Sales', 'consu', 'default_product')
-        shipping_product = self.env.ref('sale_amazon.shipping_product', raise_if_not_found=False) \
+        shipping_product = self.env.ref('custom_sale_amazon.shipping_product', raise_if_not_found=False) \
                            or self.env['product.product']._restore_data_product(
                               'Amazon Sales', 'consu', 'shipping_product')
         return {
