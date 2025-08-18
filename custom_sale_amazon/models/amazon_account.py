@@ -645,8 +645,7 @@ class AmazonAccount(models.Model):
             # stock picking if fulfilled by merchant.
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': 'Bell+Modern Amazon',
-            'order_customer':contact_partner.id,
+            'partner_id': contact_partner.id,
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
             'invoice_status': 'no',
@@ -658,8 +657,7 @@ class AmazonAccount(models.Model):
             'user_id': self.user_id.id,
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
-            'purchase_order':f"Amazon Order {amazon_order_ref}",
-            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm', 
+            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
         }
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
@@ -701,12 +699,12 @@ class AmazonAccount(models.Model):
         ], limit=1)
         partner_vals = {
             'street': street,
-            'oder_address': street2,
-            'x_studio_zip': zip_code,
+            'street2': street2,
+            'zip': zip_code,
             'city': city,
             'country_id': country.id,
             'state_id': state.id,
-            'order_phone': phone,
+            'phone': phone,
             'customer_rank': 1,
             'company_id': self.company_id.id,
             'amazon_email': anonymized_email,
