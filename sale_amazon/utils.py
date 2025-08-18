@@ -13,7 +13,8 @@ from xml.etree import ElementTree
 from odoo import _
 from odoo.exceptions import UserError, ValidationError
 
-from odoo.addons.sale_amazon import const
+from . import const
+
 
 
 _logger = logging.getLogger(__name__)
