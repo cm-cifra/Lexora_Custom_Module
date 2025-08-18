@@ -7,8 +7,8 @@ from xml.etree import ElementTree
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from odoo.addons.sale_amazon import const
-from odoo.addons.sale_amazon import utils as amazon_utils
+from .. import const
+from .. import utils as amazon_utils
 
 
 _logger = logging.getLogger(__name__)
