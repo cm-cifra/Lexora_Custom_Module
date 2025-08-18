@@ -37,7 +37,7 @@
                 <div class="mt16">
                     <!-- Button to open Amazon Accounts list -->
                     <div class="mb8">
-                        <button name="%(sale_amazon.list_amazon_account_action)d"
+                        <button name="%(custom_sale_amazon.list_amazon_account_action)d"
                                 string="Amazon Accounts"
                                 icon="fa-shopping-cart"
                                 type="action"
@@ -45,7 +45,7 @@
                     </div>
                     <!-- Button to open Amazon Marketplaces list -->
                     <div class="mb8">
-                        <button name="%(sale_amazon.list_amazon_marketplace_action)d"
+                        <button name="%(custom_sale_amazon.list_amazon_marketplace_action)d"
                                 string="Amazon Marketplaces"
                                 icon="fa-globe"
                                 type="action"
