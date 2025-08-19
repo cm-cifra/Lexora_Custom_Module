@@ -656,7 +656,7 @@ class AmazonAccount(models.Model):
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'order_customer':'test',
+        
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
@@ -669,8 +669,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917, 
-            'purchase_order':  {amazon_order_ref},
+            'partner_id':contact_partner.id, 
+            
            
         }
 
@@ -855,17 +855,29 @@ class AmazonAccount(models.Model):
             promo_discount_subtotal = self._recompute_subtotal(
                 original_promo_discount_subtotal, promo_disc_tax, taxes, currency, fiscal_pos
             )
+            
             amazon_item_ref = item_data['OrderItemId']
+                        # Instead of always taking offer.product_id.id, try to match SKU directly
+            product = self.env['product.product'].search([
+                ('default_code', '=', sku),
+                *self.env['product.product']._check_company_domain(self.company_id),
+            ], limit=1)
+
+            if product:
+                product_id = product.id
+            else:
+                # fallback to offer.product_id
+                product_id = offer.product_id.id
             order_lines_values.append(self._convert_to_order_line_values(
                 item_data=item_data,
-                product_id=offer.product_id.id,
+                product_id=product_id,
                 description=description,
                 subtotal=subtotal,
                 tax_ids=taxes.ids,
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
-                amazon_offer_id=offer.id,
+                amazon_offer_id=offer.id, 
             ))
 
             # Prepare the values for the gift wrap line.
@@ -956,22 +968,18 @@ class AmazonAccount(models.Model):
         """
         subtotal = kwargs.get('subtotal', 0)
         quantity = kwargs.get('quantity', 1)
-
-        # Get product
-        product = self.env['product.product'].browse(kwargs.get('product_id'))
-
         return {
-            'name': kwargs.get('description', ''),  # already used for Odoo's sale line description
-            'product_id':  kwargs.get('item_data', {}).get('SellerSKU', ''),  # Amazon SKU as barcode
-            'product_template_id': product.product_tmpl_id.id if product else False,  # link to template
-         
+            'name': kwargs.get('description', ''),
+            'product_id': kwargs.get('product_id'),
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
             'discount': (kwargs.get('discount', 0) / subtotal) * 100 if subtotal else 0,
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
+            'amazon_offer_id': kwargs.get('amazon_offer_id'),
         }
+
 
 
     def _find_or_create_offer(self, sku, marketplace):
