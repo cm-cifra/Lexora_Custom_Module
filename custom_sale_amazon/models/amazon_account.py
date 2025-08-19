@@ -669,8 +669,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':contact_partner.id, 
-            
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
            
         }
 
@@ -887,6 +887,7 @@ class AmazonAccount(models.Model):
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
                 amazon_offer_id=offer.id,
+                skus=sku,
             ))
 
             # --- Gift Wrap Line ---
@@ -973,6 +974,7 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
+            'barcode_scan':kwargs.get('skus'),
         }
 
 
