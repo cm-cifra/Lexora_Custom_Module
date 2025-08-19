@@ -669,7 +669,7 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id': contact_partner.id,  # ✅ FIXED
+            'partner_id':11917,  # ✅ FIXED
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
