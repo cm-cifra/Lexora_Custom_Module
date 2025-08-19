@@ -670,7 +670,8 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917, 
-            'purchase_order': f"Amazon Order {amazon_order_ref}", 
+            'purchase_order': f"Amazon Order {amazon_order_ref}",
+           
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
@@ -967,7 +968,7 @@ class AmazonAccount(models.Model):
             'discount': (kwargs.get('discount', 0) / subtotal) * 100 if subtotal else 0,
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
-            'amazon_offer_id': kwargs.get('amazon_offer_id'),
+            'barcode_scan': kwargs.get('product_id'),
         }
 
     def _find_or_create_offer(self, sku, marketplace):
