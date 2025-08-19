@@ -656,7 +656,7 @@ class AmazonAccount(models.Model):
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'order_customer': contact_partner.id,
+            'order_customer':'test',
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
@@ -669,7 +669,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917,  # ✅ FIXED
+            'partner_id':11917, 
+            'purchase_order': f"Amazon Order {amazon_order_ref}", 
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
