@@ -670,7 +670,7 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917, 
-            'purchase_order': f"Amazon Order {amazon_order_ref}",
+            'purchase_order':  {amazon_order_ref},
            
         }
 
@@ -825,10 +825,7 @@ class AmazonAccount(models.Model):
                 offer_fulfill_channel = None
                 if isinstance(feed_data, dict):  # Filtered out old `amazon_feed_ref` still stored
                     offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
-                if order_fulfillment_channel != offer_fulfill_channel:  # old feed_ref included
-                    # This discrepancy might happen if the fulfillment channel was changed for an
-                    # offer in Amazon backend. But due to a known problem of ghost listings from
-                    # Amazon side, we can't trust the order either.
+                if order_fulfillment_channel != offer_fulfill_channel:   
                     offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
 
             product_taxes = offer.product_id.taxes_id.filtered_domain(
@@ -959,17 +956,23 @@ class AmazonAccount(models.Model):
         """
         subtotal = kwargs.get('subtotal', 0)
         quantity = kwargs.get('quantity', 1)
+
+        # Get product
+        product = self.env['product.product'].browse(kwargs.get('product_id'))
+
         return {
-            'name': kwargs.get('description', ''),
-            'product_id': kwargs.get('product_id'),
+            'name': kwargs.get('description', ''),  # already used for Odoo's sale line description
+            'product_id': product.id,
+            'product_template_id': product.product_tmpl_id.id if product else False,  # link to template
+            'barcode_scan': kwargs.get('item_data', {}).get('SellerSKU', ''),  # Amazon SKU as barcode
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
             'discount': (kwargs.get('discount', 0) / subtotal) * 100 if subtotal else 0,
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
-            'barcode_scan': kwargs.get('product_id'),
         }
+
 
     def _find_or_create_offer(self, sku, marketplace):
         """ Find or create the amazon offer based on the SKU and marketplace.
