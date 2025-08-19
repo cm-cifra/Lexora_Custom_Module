@@ -640,17 +640,30 @@ class AmazonAccount(models.Model):
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
+        # Instead of hardcoding a string, find or create a partner record
+        amazon_partner = self.env['res.partner'].search([
+            ('name', '=', 'Bell+Modern Amazon'),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+
+        if not amazon_partner:
+            amazon_partner = self.env['res.partner'].create({
+                'name': 'Bell+Modern Amazon',
+                'company_type': 'company',
+                'customer_rank': 1,
+                'company_id': self.company_id.id,
+            })
+
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
-           
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'order_customer': contact_partner.id,
-            'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
-            'invoice_status': 'no',
+            'partner_id': contact_partner.id or amazon_partner.id,   # ✅ valid ID
             'partner_shipping_id': delivery_partner.id,
+            'pricelist_id': self._find_or_create_pricelist(currency).id,
+            'order_line': [(0, 0, line) for line in order_lines_values],
+            'invoice_status': 'no',
             'require_signature': False,
             'require_payment': False,
             'fiscal_position_id': fiscal_position.id,
@@ -659,9 +672,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id': 'Bell+Modern Amazon',  # Or from data if available
-              
         }
+
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
         return order_vals
