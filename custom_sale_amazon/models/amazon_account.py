@@ -621,7 +621,6 @@ class AmazonAccount(models.Model):
 
 
     def _prepare_order_values(self, order_data):
-        # Prepare the order line values.
         shipping_code = order_data.get('ShipServiceLevel')
         shipping_product = self._find_matching_product(
             shipping_code, 'shipping_product', 'Shipping', 'service'
@@ -634,36 +633,34 @@ class AmazonAccount(models.Model):
         fiscal_position = self.env['account.fiscal.position'].with_company(
             self.company_id
         )._get_fiscal_position(contact_partner, delivery_partner)
+
         order_lines_values = self._prepare_order_lines_values(
             order_data, currency, fiscal_position, shipping_product
         )
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
-        # Instead of hardcoding a string, find or create a partner record
-        amazon_partner = self.env['res.partner'].search([
-            ('name', '=', 'Bell+Modern Amazon'),
-            ('company_id', '=', self.company_id.id),
-        ], limit=1)
 
-        if not amazon_partner:
-            amazon_partner = self.env['res.partner'].create({
-                'name': 'Bell+Modern Amazon',
-                'company_type': 'company',
-                'customer_rank': 1,
-                'company_id': self.company_id.id,
-            })
+        # fallback Amazon customer if no buyer info exists
+        if not contact_partner:
+            contact_partner = self.env['res.partner'].search([('name', '=', 'Bell+Modern Amazon')], limit=1)
+            if not contact_partner:
+                contact_partner = self.env['res.partner'].create({
+                    'name': 'Bell+Modern Amazon',
+                    'customer_rank': 1,
+                    'company_id': self.company_id.id,
+                })
 
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': contact_partner.id or amazon_partner.id,   # ✅ valid ID
-            'partner_shipping_id': delivery_partner.id,
+            'order_customer': contact_partner.id,
             'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line) for line in order_lines_values],
+            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
+            'partner_shipping_id': delivery_partner.id,
             'require_signature': False,
             'require_payment': False,
             'fiscal_position_id': fiscal_position.id,
@@ -672,10 +669,12 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id': contact_partner.id,  # ✅ FIXED
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
+
         return order_vals
 
     def _find_or_create_partners_from_data(self, order_data):
