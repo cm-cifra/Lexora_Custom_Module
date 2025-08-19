@@ -962,9 +962,9 @@ class AmazonAccount(models.Model):
 
         return {
             'name': kwargs.get('description', ''),  # already used for Odoo's sale line description
-            'product_id': product.id,
+            'product_id':  kwargs.get('item_data', {}).get('SellerSKU', ''),  # Amazon SKU as barcode
             'product_template_id': product.product_tmpl_id.id if product else False,  # link to template
-            'barcode_scan': kwargs.get('item_data', {}).get('SellerSKU', ''),  # Amazon SKU as barcode
+         
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
