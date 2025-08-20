@@ -12,13 +12,10 @@ from werkzeug import urls
 from odoo import _, api, exceptions, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY as CONCURRENCY_ERRORS
+
  
 from .. import const, utils as amazon_utils
 from ..controllers.onboarding import compute_oauth_signature
-
- 
-
-
 _logger = logging.getLogger(__name__)
 
 
@@ -607,22 +604,23 @@ class AmazonAccount(models.Model):
         return order
 
     def _create_order_from_data(self, order_data):
-        """ Create a new sales order based on the provided order data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to create a sales order from.
-        :return: The newly created sales order.
-        :rtype: record of `sale.order`
-        """
         self.ensure_one()
+
+        # Avoid duplicate orders
+        existing_order = self.env['sale.order'].search([
+            ('amazon_order_ref', '=', order_data['AmazonOrderId']),
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        if existing_order:
+            return existing_order
+
         order_vals = self._prepare_order_values(order_data)
         return self.env['sale.order'].with_context(
             mail_create_nosubscribe=True
-        ).with_company(self.company_id).create(order_vals)
+    ).with_company(self.company_id).create(order_vals)
+
 
     def _prepare_order_values(self, order_data):
-        # Prepare the order line values.
         shipping_code = order_data.get('ShipServiceLevel')
         shipping_product = self._find_matching_product(
             shipping_code, 'shipping_product', 'Shipping', 'service'
@@ -635,22 +633,33 @@ class AmazonAccount(models.Model):
         fiscal_position = self.env['account.fiscal.position'].with_company(
             self.company_id
         )._get_fiscal_position(contact_partner, delivery_partner)
+
         order_lines_values = self._prepare_order_lines_values(
             order_data, currency, fiscal_position, shipping_product
         )
 
         fulfillment_channel = order_data['FulfillmentChannel']
         purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
+
+        # fallback Amazon customer if no buyer info exists
+        if not contact_partner:
+            contact_partner = self.env['res.partner'].search([('name', '=', 'Bell+Modern Amazon')], limit=1)
+            if not contact_partner:
+                contact_partner = self.env['res.partner'].create({
+                    'name': 'Bell+Modern Amazon',
+                    'customer_rank': 1,
+                    'company_id': self.company_id.id,
+                })
+        sku_for_barcode = order_lines_values[0]['skus'] if order_lines_values else ''
+
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
-            # The order is first created unlocked and later locked to trigger the creation of a
-            # stock picking if fulfilled by merchant.
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-            'partner_id': contact_partner.id,
+        
             'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, order_line_values) for order_line_values in order_lines_values],
+            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
             'partner_shipping_id': delivery_partner.id,
             'require_signature': False,
@@ -661,9 +670,15 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
+            'barcode_scan': sku_for_barcode,
+           
         }
+
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
+
         return order_vals
 
     def _find_or_create_partners_from_data(self, order_data):
@@ -773,32 +788,13 @@ class AmazonAccount(models.Model):
         return contact, delivery
 
     def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
-        """ Prepare the values for the order lines to create based on Amazon data.
+        """Prepare sale.order.line values for an Amazon order."""
 
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data related to the item data.
-        :param record currency: The currency of the sales order, as a `res.currency` record.
-        :param record fiscal_pos: The fiscal position of the sales order, as an
-                                  `account.fiscal.position` record.
-        :param record shipping_product: The shipping product matching the shipping code, as a
-                                        `product.product` record.
-        :return: The order lines values.
-        :rtype: dict
-        """
         def pull_items_data(amazon_order_ref_):
-            """ Pull all item data for the order to synchronize.
-
-            :param str amazon_order_ref_: The Amazon reference of the order to synchronize.
-            :return: The items data.
-            :rtype: list
-            """
+            """Fetch all order items in batches from Amazon API."""
             items_data_ = []
-            # Order items are pulled in batches. If more order items than those returned can be
-            # synchronized, the request results are paginated and the next page holds another batch.
             has_next_page_ = True
             while has_next_page_:
-                # Pull the next batch of order items.
                 items_batch_data_, has_next_page_ = amazon_utils.pull_batch_data(
                     self, 'getOrderItems', {}, path_parameter=amazon_order_ref_
                 )
@@ -812,60 +808,80 @@ class AmazonAccount(models.Model):
         marketplace_api_ref = order_data['MarketplaceId']
 
         items_data = pull_items_data(amazon_order_ref)
-
         order_lines_values = []
+
         for item_data in items_data:
-            # Prepare the values for the product line.
+            # Amazon SKU
             sku = item_data['SellerSKU']
+
+            # Marketplace
             marketplace = self.active_marketplace_ids.filtered(
                 lambda m: m.api_ref == marketplace_api_ref
             )
+
+            # Offer (amazon.offer record)
             offer = self._find_or_create_offer(sku, marketplace)
+
+            # Reset invalid feed ref if needed
             if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
                 try:
                     feed_data = json.loads(offer.amazon_feed_ref)
-                except json.JSONDecodeError:  # Field is an incorrect JSON
+                except json.JSONDecodeError:
                     feed_data = None
                 offer_fulfill_channel = None
-                if isinstance(feed_data, dict):  # Filtered out old `amazon_feed_ref` still stored
+                if isinstance(feed_data, dict):
                     offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
-                if order_fulfillment_channel != offer_fulfill_channel:  # old feed_ref included
-                    # This discrepancy might happen if the fulfillment channel was changed for an
-                    # offer in Amazon backend. But due to a known problem of ghost listings from
-                    # Amazon side, we can't trust the order either.
+                if order_fulfillment_channel != offer_fulfill_channel:
                     offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
 
-            product_taxes = offer.product_id.taxes_id.filtered_domain(
+            # Try to find Odoo product by default_code == Amazon SKU
+            product = self.env['product.product'].search([
+                ('default_code', '=', sku),
+                *self.env['product.product']._check_company_domain(self.company_id),
+            ], limit=1)
+
+            if product:
+                product_id = product.id
+            else:
+                # fallback to product linked on offer
+                product_id = offer.product_id.id
+
+            # Taxes
+            product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
                 [*self.env['account.tax']._check_company_domain(self.company_id)]
             )
+            taxes = fiscal_pos.map_tax(product_taxes) if fiscal_pos else product_taxes
+
+            # Description
             main_condition = item_data.get('ConditionId')
             sub_condition = item_data.get('ConditionSubtypeId')
             if not main_condition or main_condition.lower() == 'new':
                 description = "[%s] %s" % (sku, item_data['Title'])
             else:
-                item_title = item_data['Title']
                 description = _(
-                    "[%s] %s\nCondition: %s - %s", sku, item_title, main_condition, sub_condition
+                    "[%s] %s\nCondition: %s - %s", sku, item_data['Title'], main_condition, sub_condition
                 )
+
+            # Prices
             sales_price = float(item_data.get('ItemPrice', {}).get('Amount', 0.0))
             tax_amount = float(item_data.get('ItemTax', {}).get('Amount', 0.0))
-            original_subtotal = sales_price - tax_amount \
-                if marketplace.tax_included else sales_price
-            taxes = fiscal_pos.map_tax(product_taxes) if fiscal_pos else product_taxes
-            subtotal = self._recompute_subtotal(
-                original_subtotal, tax_amount, taxes, currency, fiscal_pos
-            )
+            original_subtotal = sales_price - tax_amount if marketplace.tax_included else sales_price
+            subtotal = self._recompute_subtotal(original_subtotal, tax_amount, taxes, currency, fiscal_pos)
+
+            # Promo discounts
             promo_discount = float(item_data.get('PromotionDiscount', {}).get('Amount', '0'))
             promo_disc_tax = float(item_data.get('PromotionDiscountTax', {}).get('Amount', '0'))
-            original_promo_discount_subtotal = promo_discount - promo_disc_tax \
-                if marketplace.tax_included else promo_discount
+            original_promo_discount_subtotal = promo_discount - promo_disc_tax if marketplace.tax_included else promo_discount
             promo_discount_subtotal = self._recompute_subtotal(
                 original_promo_discount_subtotal, promo_disc_tax, taxes, currency, fiscal_pos
             )
+
             amazon_item_ref = item_data['OrderItemId']
+
+            # --- Product Line ---
             order_lines_values.append(self._convert_to_order_line_values(
                 item_data=item_data,
-                product_id=offer.product_id.id,
+                product_id=product_id,
                 description=description,
                 subtotal=subtotal,
                 tax_ids=taxes.ids,
@@ -873,9 +889,10 @@ class AmazonAccount(models.Model):
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
                 amazon_offer_id=offer.id,
+                skus=sku,
             ))
 
-            # Prepare the values for the gift wrap line.
+            # --- Gift Wrap Line ---
             if item_data.get('IsGift', 'false') == 'true':
                 item_gift_info = item_data.get('BuyerInfo', {})
                 gift_wrap_code = item_gift_info.get('GiftWrapLevel')
@@ -887,27 +904,16 @@ class AmazonAccount(models.Model):
                     gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
                         [*self.env['account.tax']._check_company_domain(self.company_id)]
                     )
-                    gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) \
-                        if fiscal_pos else gift_wrap_product_taxes
-                    gift_wrap_tax_amount = float(
-                        item_gift_info.get('GiftWrapTax', {}).get('Amount', '0')
-                    )
-                    original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount \
-                        if marketplace.tax_included else gift_wrap_price
+                    gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) if fiscal_pos else gift_wrap_product_taxes
+                    gift_wrap_tax_amount = float(item_gift_info.get('GiftWrapTax', {}).get('Amount', '0'))
+                    original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount if marketplace.tax_included else gift_wrap_price
                     gift_wrap_subtotal = self._recompute_subtotal(
-                        original_gift_wrap_subtotal,
-                        gift_wrap_tax_amount,
-                        gift_wrap_taxes,
-                        currency,
-                        fiscal_pos,
+                        original_gift_wrap_subtotal, gift_wrap_tax_amount, gift_wrap_taxes, currency, fiscal_pos
                     )
                     order_lines_values.append(self._convert_to_order_line_values(
                         item_data=item_data,
                         product_id=gift_wrap_product.id,
-                        description=_(
-                            "[%s] Gift Wrapping Charges for %s",
-                            gift_wrap_code, offer.product_id.name
-                        ),
+                        description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name),
                         subtotal=gift_wrap_subtotal,
                         tax_ids=gift_wrap_taxes.ids,
                     ))
@@ -919,34 +925,31 @@ class AmazonAccount(models.Model):
                         display_type='line_note',
                     ))
 
-            # Prepare the values for the delivery charges.
+            # --- Shipping Line ---
             shipping_code = order_data.get('ShipServiceLevel')
             shipping_price = float(item_data.get('ShippingPrice', {}).get('Amount', '0'))
             if shipping_code and shipping_price != 0:
                 shipping_product_taxes = shipping_product.taxes_id.filtered_domain(
                     [*self.env['account.tax']._check_company_domain(self.company_id)]
                 )
-                shipping_taxes = fiscal_pos.map_tax(shipping_product_taxes) if fiscal_pos \
-                    else shipping_product_taxes
+                shipping_taxes = fiscal_pos.map_tax(shipping_product_taxes) if fiscal_pos else shipping_product_taxes
                 shipping_tax_amount = float(item_data.get('ShippingTax', {}).get('Amount', '0'))
-                origin_ship_subtotal = shipping_price - shipping_tax_amount \
-                    if marketplace.tax_included else shipping_price
+                origin_ship_subtotal = shipping_price - shipping_tax_amount if marketplace.tax_included else shipping_price
                 shipping_subtotal = self._recompute_subtotal(
                     origin_ship_subtotal, shipping_tax_amount, shipping_taxes, currency, fiscal_pos
                 )
+
                 ship_discount = float(item_data.get('ShippingDiscount', {}).get('Amount', '0'))
                 ship_disc_tax = float(item_data.get('ShippingDiscountTax', {}).get('Amount', '0'))
-                origin_ship_disc_subtotal = ship_discount - ship_disc_tax \
-                    if marketplace.tax_included else ship_discount
+                origin_ship_disc_subtotal = ship_discount - ship_disc_tax if marketplace.tax_included else ship_discount
                 ship_discount_subtotal = self._recompute_subtotal(
                     origin_ship_disc_subtotal, ship_disc_tax, shipping_taxes, currency, fiscal_pos
                 )
+
                 order_lines_values.append(self._convert_to_order_line_values(
                     item_data=item_data,
                     product_id=shipping_product.id,
-                    description=_(
-                        "[%s] Delivery Charges for %s", shipping_code, offer.product_id.name
-                    ),
+                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name),
                     subtotal=shipping_subtotal,
                     tax_ids=shipping_taxes.ids,
                     discount=ship_discount_subtotal,
@@ -973,7 +976,10 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
+            'barcode_scan':kwargs.get('amazon_offer_id'),
         }
+
+
 
     def _find_or_create_offer(self, sku, marketplace):
         """ Find or create the amazon offer based on the SKU and marketplace.
