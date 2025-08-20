@@ -672,7 +672,7 @@ class AmazonAccount(models.Model):
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
             'order_address':delivery_partner.id,
-            'order_customer':contact_partner, 
+            'order_customer':contact_partner,
            
         }
 
@@ -889,7 +889,7 @@ class AmazonAccount(models.Model):
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
                 amazon_offer_id=offer.id,
-                skus=offer,
+                skus=sku,
             ))
 
             # --- Gift Wrap Line ---
@@ -976,7 +976,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('skus'),
+            'barcode_scan':'test sku',
+            'product_template_id':'[LMSS1836BG]',
         }
 
 
