@@ -887,7 +887,7 @@ class AmazonAccount(models.Model):
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
                 amazon_offer_id=offer.id,
-                skus=sku,
+                skus=offer.id,
             ))
 
             # --- Gift Wrap Line ---
