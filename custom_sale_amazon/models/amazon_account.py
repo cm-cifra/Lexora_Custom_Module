@@ -672,8 +672,7 @@ class AmazonAccount(models.Model):
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
             'order_address':delivery_partner.id,
-            'order_customer':contact_partner,
-            'barcode_scan':sku
+            'order_customer':contact_partner, 
            
         }
 
