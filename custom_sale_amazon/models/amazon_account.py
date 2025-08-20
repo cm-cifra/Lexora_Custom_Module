@@ -530,29 +530,31 @@ class AmazonAccount(models.Model):
         }
 
     def _process_order_data(self, order_data):
-        """ Process the provided order data and return the matching sales order, if any.
-
-        If no matching sales order is found, a new one is created if it is in a 'synchronizable'
-        status: 'Shipped' or 'Unshipped', if it is respectively an FBA or an FBA order. If the
-        matching sales order already exists and the Amazon order was canceled, the sales order is
-        also canceled. If the matching sales order already exists and the order data confirm that a
-        FBM order got shipped, we update the shipping status when it's needed.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to process.
-        :return: The matching Amazon order, if any, as a `sale.order` record.
-        :rtype: recordset of `sale.order`
-        """
         self.ensure_one()
 
-        # Search for the sales order based on its Amazon order reference.
         amazon_order_ref = order_data['AmazonOrderId']
         order = self.env['sale.order'].search(
             [('amazon_order_ref', '=', amazon_order_ref)], limit=1
         )
         amazon_status = order_data['OrderStatus']
         fulfillment_channel = order_data['FulfillmentChannel']
+
+        # ✅ Check if all products exist in Odoo before syncing
+        order_lines = order_data.get('OrderItems', [])
+        missing_products = []
+        for line in order_lines:
+            sku = line.get('SellerSKU')
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+            if not product:
+                missing_products.append(sku)
+
+        if missing_products:
+            _logger.warning(
+                "Skipped Amazon order %(ref)s because the following SKUs were not found in Odoo: %(skus)s",
+                {'ref': amazon_order_ref, 'skus': ', '.join(missing_products)}
+            )
+            return False  # 🚫 Do not sync this order
+
         if not order:  # No sales order was found with the given Amazon order reference.
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel]:
                 # Create the sales order and generate stock moves depending on the Amazon channel.
@@ -574,7 +576,7 @@ class AmazonAccount(models.Model):
         else:  # The sales order already exists.
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
-            )  # Consider any "unsynced" status so that we synchronize updates made from Amazon.
+            )
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
                 _logger.info(
@@ -582,14 +584,6 @@ class AmazonAccount(models.Model):
                     " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
             elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                # This can happen in 3 cases:
-                # 1. The processing of the feed of a batch of pickings failed on Amazon side in a
-                # way that we couldn't tell which picking are faulty. In that case, all pickings of
-                # the batch were flagged as in error. The order status update allows correcting the
-                # status of non-faulty pickings while leaving the faulty ones in error.
-                # 2. The shipping was arranged directly from Amazon's backend.
-                # 3. The user uses a delivery method that contacted Amazon to send the picking
-                # information before we did.
                 unsynced_pickings.amazon_sync_status = 'done'
                 _logger.info(
                     "Forced the picking synchronization status to 'done' for sales order with"
