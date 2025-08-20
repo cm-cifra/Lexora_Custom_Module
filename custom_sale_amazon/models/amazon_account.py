@@ -976,8 +976,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':'test sku',
-            'product_template_id':'[LMSS1836BG]',
+            'barcode_scan':kwargs.get('skus'),
+            'product_template_id': kwargs.get('skus'),
         }
 
 
