@@ -650,7 +650,6 @@ class AmazonAccount(models.Model):
                     'customer_rank': 1,
                     'company_id': self.company_id.id,
                 })
-        sku_for_barcode = order_lines_values[0]['skus'] if order_lines_values else ''
 
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
@@ -672,7 +671,9 @@ class AmazonAccount(models.Model):
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
-            'barcode_scan': sku_for_barcode,
+            'order_address':delivery_partner.id,
+            'order_customer':contact_partner,
+            'barcode_scan':sku
            
         }
 
@@ -889,7 +890,7 @@ class AmazonAccount(models.Model):
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
                 amazon_offer_id=offer.id,
-                skus=sku,
+                skus=offer,
             ))
 
             # --- Gift Wrap Line ---
@@ -976,7 +977,7 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('amazon_offer_id'),
+            'barcode_scan':kwargs.get('skus'),
         }
 
 
