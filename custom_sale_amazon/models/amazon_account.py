@@ -626,30 +626,33 @@ class AmazonAccount(models.Model):
         )
 
         order_vals = {
-            'origin': f"Amazon Order {amazon_order_ref}",
-            'state': 'sale',
-            'locked': fulfillment_channel == 'AFN',
-            'date_order': purchase_date,
-        
-            'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
-            'invoice_status': 'no',
-            'partner_shipping_id': delivery_partner.id,
-            'require_signature': False,
-            'require_payment': False,
-            'fiscal_position_id': fiscal_position.id,
-            'company_id': self.company_id.id,
-            'user_id': self.user_id.id,
-            'team_id': self.team_id.id,
-            'amazon_order_ref': amazon_order_ref,
-            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917, 
-            'purchase_order':amazon_order_ref,
-            'order_address':order_address,
-              'order_customer': contact_partner.name if contact_partner else '',  # ✅ fixed
-             
-           
-        }
+        'origin': f"Amazon Order {amazon_order_ref}",
+        'state': 'sale',
+        'locked': fulfillment_channel == 'AFN',
+        'date_order': purchase_date,
+
+        'pricelist_id': self._find_or_create_pricelist(currency).id,
+        'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
+        'invoice_status': 'no',
+        'partner_shipping_id': delivery_partner.id,
+        'require_signature': False,
+        'require_payment': False,
+        'fiscal_position_id': fiscal_position.id,
+        'company_id': self.company_id.id,
+        'user_id': self.user_id.id,
+        'team_id': self.team_id.id,
+        'amazon_order_ref': amazon_order_ref,
+        'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+        'partner_id': 11917,
+        'purchase_order': amazon_order_ref,
+        'order_address': order_address,
+
+        # ✅ Fixed customer info
+        'order_customer': contact_partner.name if contact_partner else '',
+        'order_phone': contact_partner.phone or contact_partner.mobile or '',
+        'x_studio_zip': contact_partner.zip or '',
+    }
+
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
@@ -951,8 +954,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('skus'),
-            'product_template_id': kwargs.get('skus'),
+            'barcode_scan':kwargs.get('skus'),  
+            'product_template_id':kwargs.get('skus'),
         }
 
 
