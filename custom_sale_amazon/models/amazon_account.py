@@ -663,6 +663,7 @@ class AmazonAccount(models.Model):
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
+        
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
@@ -675,17 +676,19 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id': 11917,
-            'purchase_order': amazon_order_ref,
-            # 🔹 Now stored as string, not partner ID
-            'order_address': order_address,
-            'order_customer': contact_partner.name,  # 🔹 Just the name string
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
+            'order_address':order_address,
+            'order_customer':contact_partner,
+             
+           
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
 
         return order_vals
+
     def _find_or_create_partners_from_data(self, order_data):
         """ Find or create the contact and delivery partners based on the provided order data.
 
