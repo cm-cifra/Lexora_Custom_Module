@@ -513,68 +513,39 @@ class AmazonAccount(models.Model):
             )
             return False  # 🚫 Do not sync this order
 
-        if not order:  # No sales order exists yet
+        if not order:  
+    # Create new order if it doesn’t exist
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
-
-                # Handle fulfillment channel
                 if order.amazon_channel == 'fba':
                     self._generate_stock_moves(order)
                 elif order.amazon_channel == 'fbm':
+                    # Confirm only if it's still draft
+                    if order.state in ['draft', 'sent']:
+                        order.with_context(mail_notrack=True).action_confirm()
                     order.with_context(mail_notrack=True).action_lock()
-
-                # ✅ If shipped, mark as confirmed + lock it
-                if amazon_status == "Shipped":
-                    order.action_confirm()
-                    order.action_lock()
-                    for picking in order.picking_ids:
-                        if picking.state not in ["done", "cancel"]:
-                            picking.action_assign()
-                            for move in picking.move_ids:
-                                move.quantity_done = move.product_uom_qty
-                            picking.button_validate()
-                    _logger.info(
-                        "Created and marked order %(ref)s as Shipped for Amazon account %(id)s.",
-                        {'ref': amazon_order_ref, 'id': self.id}
-                    )
-                else:
-                    _logger.info(
-                        "Created a new sales order with amazon_order_ref %(ref)s for Amazon account"
-                        " with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                    )
+                _logger.info("Created new sales order %s (Amazon %s)", order.name, amazon_order_ref)
             else:
-                _logger.info(
-                    "Ignored Amazon order with reference %(ref)s and status %(status)s for Amazon"
-                    " account with id %(account_id)s.",
-                    {'ref': amazon_order_ref, 'status': amazon_status, 'account_id': self.id},
-                )
-        else:  # Order already exists
+                _logger.info("Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
+        else:
+            # Order exists already
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
             )
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
-                _logger.info(
-                    "Canceled sales order with amazon_order_ref %(ref)s for Amazon account with id"
-                    " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
+                _logger.info("Canceled order %s", amazon_order_ref)
             elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
                 unsynced_pickings.amazon_sync_status = 'done'
-                for picking in unsynced_pickings:
-                    if picking.state not in ["done", "cancel"]:
-                        picking.action_assign()
-                        for move in picking.move_ids:
-                            move.quantity_done = move.product_uom_qty
-                        picking.button_validate()
-                _logger.info(
-                    "Updated existing order %(ref)s to Shipped for Amazon account with id %(id)s.",
-                    {'ref': amazon_order_ref, 'id': self.id},
-                )
+                _logger.info("Marked pickings as done for %s", amazon_order_ref)
             else:
-                _logger.info(
-                    "Ignored already synchronized sales order with amazon_order_ref %(ref)s for"
-                    " Amazon account with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
+                _logger.info("Order %s already synced (status %s)", amazon_order_ref, amazon_status)
+
+        
+
+
+        
+         
         return order
 
 
