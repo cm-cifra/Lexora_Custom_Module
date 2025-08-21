@@ -645,12 +645,24 @@ class AmazonAccount(models.Model):
                     'company_id': self.company_id.id,
                 })
 
+        # Build string address for order_address
+        order_address = ", ".join(
+            filter(None, [
+                delivery_partner.name,
+                delivery_partner.street,
+                delivery_partner.street2,
+                delivery_partner.city,
+                delivery_partner.zip,
+                delivery_partner.state_id.name if delivery_partner.state_id else None,
+                delivery_partner.country_id.name if delivery_partner.country_id else None,
+            ])
+        )
+
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-        
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
@@ -663,18 +675,17 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917, 
-            'purchase_order':amazon_order_ref,
-            'order_address':delivery_partner.id,
-            'order_customer':contact_partner,
-           
+            'partner_id': 11917,
+            'purchase_order': amazon_order_ref,
+            # 🔹 Now stored as string, not partner ID
+            'order_address': order_address,
+            'order_customer': contact_partner.name,  # 🔹 Just the name string
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
 
         return order_vals
-
     def _find_or_create_partners_from_data(self, order_data):
         """ Find or create the contact and delivery partners based on the provided order data.
 
