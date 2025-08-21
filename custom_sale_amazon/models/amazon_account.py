@@ -388,11 +388,12 @@ class AmazonAccount(models.Model):
             )
 
     def _sync_orders(self, auto_commit=True):
-        """ Synchronize the accounts' sales orders that were recently updated on Amazon. """
+        """ Synchronize the accounts' sales orders that were recently updated on Amazon,
+            including shipped orders. """
 
         accounts = self or self.search([])
         for account in accounts:
-            account = account[0]  # Avoid pre-fetching after each cache invalidation.
+            account = account[0]
             amazon_utils.ensure_account_is_set_up(account)
 
             _logger.info("🔄 Starting order sync for Amazon account ID %s", account.id)
@@ -407,8 +408,6 @@ class AmazonAccount(models.Model):
             try:
                 has_next_page = True
                 while has_next_page:
-                    _logger.debug("📦 Fetching batch of orders for account ID %s", account.id)
-
                     orders_batch_data, has_next_page = amazon_utils.pull_batch_data(
                         account, 'getOrders', payload
                     )
@@ -422,6 +421,14 @@ class AmazonAccount(models.Model):
 
                     for order_data in orders_data:
                         amazon_order_ref = order_data['AmazonOrderId']
+                        order_status = order_data.get("OrderStatus")
+
+                        # ✅ Always sync shipped orders too
+                        if order_status in ["Canceled"]:  
+                            _logger.info("⏭️ Skipping order %s (status %s) for account ID %s",
+                                        amazon_order_ref, order_status, account.id)
+                            continue  
+
                         try:
                             if auto_commit:
                                 with self.env.cr.savepoint():
@@ -432,8 +439,8 @@ class AmazonAccount(models.Model):
                             last_order_update = dateutil.parser.parse(order_data['LastUpdateDate'])
                             account.last_orders_sync = last_order_update.replace(tzinfo=None)
 
-                            _logger.info("✔️ Successfully synced order %s for account ID %s",
-                                        amazon_order_ref, account.id)
+                            _logger.info("✔️ Synced order %s (status: %s) for account ID %s",
+                                        amazon_order_ref, order_status, account.id)
 
                             if auto_commit:
                                 with amazon_utils.preserve_credentials(account):
@@ -450,8 +457,8 @@ class AmazonAccount(models.Model):
                                 raise
                             else:
                                 _logger.error(
-                                    "❌ Failed to sync order %s for account ID %s. Skipping. Error: %s",
-                                    amazon_order_ref, account.id, str(error),
+                                    "❌ Failed to sync order %s (status: %s) for account ID %s. Skipping. Error: %s",
+                                    amazon_order_ref, order_status, account.id, str(error),
                                     exc_info=True
                                 )
                                 self.env.cr.rollback()
@@ -478,48 +485,7 @@ class AmazonAccount(models.Model):
                 account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
 
             _logger.info("🏁 Finished order sync for Amazon account ID %s", account.id)
-    def _sync_order_by_reference(self, amazon_order_ref):
-        """ Synchronize an order based on its Amazon order reference.
 
-        Note: `self.ensure_one()`
-
-        :param str amazon_order_ref: The amazon reference of the order to re-synchronize.
-        :return: The synchronized Amazon order act window.
-        :rtype: dict
-        :raise UserError: If the order reference is incorrect or the order is not for an active
-                          marketplace.
-        :raise ValidationError: If the order is in a status that prevents its synchronization.
-        """
-        self.ensure_one()
-        amazon_utils.ensure_account_is_set_up(self)
-
-        order_data = amazon_utils.make_sp_api_request(
-            self, 'getOrder', path_parameter=amazon_order_ref
-        )['payload']
-        if not order_data:  # Order not found by Amazon
-            raise UserError(_("The provided reference does not match any Amazon order."))
-        if order_data['MarketplaceId'] not in self.active_marketplace_ids.mapped('api_ref'):
-            raise UserError(_("The order was not found on this account's marketplaces."))
-
-        order = self._process_order_data(order_data)
-        if not order:
-            amazon_status = order_data['OrderStatus']
-            fulfillment_channel = order_data['FulfillmentChannel']
-            raise ValidationError(_(
-                "The Amazon order with reference %(ref)s was not recovered because its status"
-                " (%(status)s) is not eligible for synchronization for its fulfillment channel"
-                " (%(channel)s).",
-                ref=amazon_order_ref,
-                status=amazon_status,
-                channel=fulfillment_channel,
-            ))
-        return {
-            'name': order.display_name,
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'view_mode': 'form',
-            'res_id': order.id,
-        }
 
     def _process_order_data(self, order_data):
         self.ensure_one()
