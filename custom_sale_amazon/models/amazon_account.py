@@ -511,19 +511,29 @@ class AmazonAccount(models.Model):
                 "Skipped Amazon order %(ref)s because the following SKUs were not found in Odoo: %(skus)s",
                 {'ref': amazon_order_ref, 'skus': ', '.join(missing_products)}
             )
-            return False  # 🚫 Do not sync this order
+            return False  # 🚫 Do not sync this order if SKUs missing
 
         if not order:
-    # Create new order if it doesn’t exist
+            # ✅ Create new order if it doesn’t exist
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
 
                 if order.amazon_channel == 'fba':
+                    # FBA → stock moves generated automatically
                     self._generate_stock_moves(order)
+
                 elif order.amazon_channel == 'fbm':
-                    if order.state in ['draft', 'sent']:
-                        order.with_context(mail_notrack=True).action_confirm()
-                    order.with_context(mail_notrack=True).action_lock()
+                    if amazon_status == "Shipped":
+                        # 🚚 Directly lock order (skip reconfirmation)
+                        if order.state in ['draft', 'sent']:
+                            order.with_context(mail_notrack=True).action_confirm()
+                        order.picking_ids.write({'state': 'done', 'amazon_sync_status': 'done'})
+                        _logger.info("📦 Auto-marked FBM order %s pickings as done (Amazon Shipped)", order.name)
+                        order.with_context(mail_notrack=True).action_lock()
+                    else:
+                        if order.state in ['draft', 'sent']:
+                            order.with_context(mail_notrack=True).action_confirm()
+                        order.with_context(mail_notrack=True).action_lock()
 
                 _logger.info("✅ Created new sales order %s (Amazon %s, status %s)",
                             order.name, amazon_order_ref, amazon_status)
@@ -531,7 +541,7 @@ class AmazonAccount(models.Model):
                 _logger.info("⏭️ Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
 
         else:
-            # Order already exists
+            # ✅ Order already exists
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
             )
@@ -541,27 +551,18 @@ class AmazonAccount(models.Model):
                 _logger.info("🚫 Canceled order %s", amazon_order_ref)
 
             elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN':
-                # Skip reconfirmation, just mark pickings as done
+                # ✅ Do not reconfirm, just mark pickings as done
                 if unsynced_pickings:
-                    unsynced_pickings.amazon_sync_status = 'done'
-                    unsynced_pickings.write({'state': 'done'})  # mark delivery as done
+                    unsynced_pickings.write({'state': 'done', 'amazon_sync_status': 'done'})
                     _logger.info("📦 Marked pickings as done for %s (Amazon Shipped)", amazon_order_ref)
 
-                # Lock order so it can’t be modified
                 if order.state not in ['cancel']:
                     order.with_context(mail_notrack=True).action_lock()
 
             else:
                 _logger.info("ℹ️ Order %s already synced (status %s)", amazon_order_ref, amazon_status)
 
-
-        
-
-
-        
-         
         return order
-
 
     def _create_order_from_data(self, order_data):
         self.ensure_one()
