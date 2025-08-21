@@ -513,33 +513,47 @@ class AmazonAccount(models.Model):
             )
             return False  # 🚫 Do not sync this order
 
-        if not order:  
+        if not order:
     # Create new order if it doesn’t exist
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
+
                 if order.amazon_channel == 'fba':
                     self._generate_stock_moves(order)
                 elif order.amazon_channel == 'fbm':
-                    # Confirm only if it's still draft
                     if order.state in ['draft', 'sent']:
                         order.with_context(mail_notrack=True).action_confirm()
                     order.with_context(mail_notrack=True).action_lock()
-                _logger.info("Created new sales order %s (Amazon %s)", order.name, amazon_order_ref)
+
+                _logger.info("✅ Created new sales order %s (Amazon %s, status %s)",
+                            order.name, amazon_order_ref, amazon_status)
             else:
-                _logger.info("Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
+                _logger.info("⏭️ Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
+
         else:
-            # Order exists already
+            # Order already exists
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
             )
+
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
-                _logger.info("Canceled order %s", amazon_order_ref)
-            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                unsynced_pickings.amazon_sync_status = 'done'
-                _logger.info("Marked pickings as done for %s", amazon_order_ref)
+                _logger.info("🚫 Canceled order %s", amazon_order_ref)
+
+            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN':
+                # Skip reconfirmation, just mark pickings as done
+                if unsynced_pickings:
+                    unsynced_pickings.amazon_sync_status = 'done'
+                    unsynced_pickings.write({'state': 'done'})  # mark delivery as done
+                    _logger.info("📦 Marked pickings as done for %s (Amazon Shipped)", amazon_order_ref)
+
+                # Lock order so it can’t be modified
+                if order.state not in ['cancel']:
+                    order.with_context(mail_notrack=True).action_lock()
+
             else:
-                _logger.info("Order %s already synced (status %s)", amazon_order_ref, amazon_status)
+                _logger.info("ℹ️ Order %s already synced (status %s)", amazon_order_ref, amazon_status)
+
 
         
 
