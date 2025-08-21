@@ -541,13 +541,7 @@ class AmazonAccount(models.Model):
                     "Canceled sales order with amazon_order_ref %(ref)s for Amazon account with id"
                     " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
-            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                unsynced_pickings.amazon_sync_status = 'done'
-                _logger.info(
-                    "Forced the picking synchronization status to 'done' for sales order with"
-                    " Amazon order reference %(ref)s and Amazon account with id %(id)s.",
-                    {'ref': amazon_order_ref, 'id': self.id},
-                )
+             
             else:
                 _logger.info(
                     "Ignored already synchronized sales order with amazon_order_ref %(ref)s for"
