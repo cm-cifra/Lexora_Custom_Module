@@ -565,20 +565,56 @@ class AmazonAccount(models.Model):
         return order
 
     def _create_order_from_data(self, order_data):
-        self.ensure_one()
+        amazon_order_ref = order_data.get("AmazonOrderId")
+        fulfillment_channel = order_data.get("FulfillmentChannel")
+        purchase_date = order_data.get("PurchaseDate")
 
-        # Avoid duplicate orders
+        # build order vals (same as before)
+        order_vals = {
+            'origin': f"Amazon Order {amazon_order_ref}",
+            'state': 'sale',
+            'locked': fulfillment_channel == 'AFN',
+            'date_order': purchase_date,
+            'pricelist_id': self._find_or_create_pricelist(order_data.get("Currency")).id,
+            'order_line': [(0, 0, line_vals) for line_vals in self._prepare_order_lines(order_data)],
+            'invoice_status': 'no',
+            'partner_shipping_id': self._find_or_create_delivery_partner(order_data).id,
+            'require_signature': False,
+            'require_payment': False,
+            'fiscal_position_id': self.env['account.fiscal.position']._get_fiscal_position(self.company_id.id),
+            'company_id': self.company_id.id,
+            'user_id': self.user_id.id,
+            'team_id': self.team_id.id,
+            'amazon_order_ref': amazon_order_ref,
+            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id': 11917,
+            'purchase_order': amazon_order_ref,
+            'order_address': order_data.get("ShippingAddress", {}),
+            'order_customer': order_data.get("BuyerName"),
+            'order_phone': order_data.get("BuyerPhone"),
+            'x_studio_zip': order_data.get("ShippingAddress", {}).get("PostalCode"),
+        }
+
+        # 🔎 Search if order already exists
         existing_order = self.env['sale.order'].search([
-            ('amazon_order_ref', '=', order_data['AmazonOrderId']),
+            ('purchase_order', '=', amazon_order_ref),
             ('company_id', '=', self.company_id.id)
         ], limit=1)
-        if existing_order:
-            return existing_order
 
-        order_vals = self._prepare_order_values(order_data)
-        return self.env['sale.order'].with_context(
-            mail_create_nosubscribe=True
-    ).with_company(self.company_id).create(order_vals)
+        if existing_order:
+            _logger.info("Amazon order %s already exists (SO %s). Updating details.", amazon_order_ref, existing_order.id)
+            existing_order.write({
+                'order_customer': order_vals['order_customer'],
+                'order_phone': order_vals['order_phone'],
+                'x_studio_zip': order_vals['x_studio_zip'],
+                'order_address': order_vals['order_address'],
+            })
+            order = existing_order
+        else:
+            order = self.env['sale.order'].with_company(self.company_id).create(order_vals)
+
+        return order
+
 
 
     def _prepare_order_values(self, order_data):
