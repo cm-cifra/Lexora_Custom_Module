@@ -513,25 +513,42 @@ class AmazonAccount(models.Model):
             )
             return False  # 🚫 Do not sync this order
 
-        if not order:  # No sales order was found with the given Amazon order reference.
-            if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel]:
-                # Create the sales order and generate stock moves depending on the Amazon channel.
+        if not order:  # No sales order exists yet
+            if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
+
+                # Handle fulfillment channel
                 if order.amazon_channel == 'fba':
                     self._generate_stock_moves(order)
                 elif order.amazon_channel == 'fbm':
                     order.with_context(mail_notrack=True).action_lock()
-                _logger.info(
-                    "Created a new sales order with amazon_order_ref %(ref)s for Amazon account"
-                    " with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
+
+                # ✅ If shipped, mark as confirmed + lock it
+                if amazon_status == "Shipped":
+                    order.action_confirm()
+                    order.action_lock()
+                    for picking in order.picking_ids:
+                        if picking.state not in ["done", "cancel"]:
+                            picking.action_assign()
+                            for move in picking.move_ids:
+                                move.quantity_done = move.product_uom_qty
+                            picking.button_validate()
+                    _logger.info(
+                        "Created and marked order %(ref)s as Shipped for Amazon account %(id)s.",
+                        {'ref': amazon_order_ref, 'id': self.id}
+                    )
+                else:
+                    _logger.info(
+                        "Created a new sales order with amazon_order_ref %(ref)s for Amazon account"
+                        " with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
+                    )
             else:
                 _logger.info(
                     "Ignored Amazon order with reference %(ref)s and status %(status)s for Amazon"
                     " account with id %(account_id)s.",
                     {'ref': amazon_order_ref, 'status': amazon_status, 'account_id': self.id},
                 )
-        else:  # The sales order already exists.
+        else:  # Order already exists
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
             )
@@ -541,13 +558,25 @@ class AmazonAccount(models.Model):
                     "Canceled sales order with amazon_order_ref %(ref)s for Amazon account with id"
                     " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
-             
+            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
+                unsynced_pickings.amazon_sync_status = 'done'
+                for picking in unsynced_pickings:
+                    if picking.state not in ["done", "cancel"]:
+                        picking.action_assign()
+                        for move in picking.move_ids:
+                            move.quantity_done = move.product_uom_qty
+                        picking.button_validate()
+                _logger.info(
+                    "Updated existing order %(ref)s to Shipped for Amazon account with id %(id)s.",
+                    {'ref': amazon_order_ref, 'id': self.id},
+                )
             else:
                 _logger.info(
                     "Ignored already synchronized sales order with amazon_order_ref %(ref)s for"
                     " Amazon account with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
         return order
+
 
     def _create_order_from_data(self, order_data):
         self.ensure_one()
