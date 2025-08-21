@@ -565,56 +565,20 @@ class AmazonAccount(models.Model):
         return order
 
     def _create_order_from_data(self, order_data):
-        amazon_order_ref = order_data.get("AmazonOrderId")
-        fulfillment_channel = order_data.get("FulfillmentChannel")
-        purchase_date = order_data.get("PurchaseDate")
+        self.ensure_one()
 
-        # build order vals (same as before)
-        order_vals = {
-            'origin': f"Amazon Order {amazon_order_ref}",
-            'state': 'sale',
-            'locked': fulfillment_channel == 'AFN',
-            'date_order': purchase_date,
-            'pricelist_id': self._find_or_create_pricelist(order_data.get("Currency")).id,
-            'order_line': [(0, 0, line_vals) for line_vals in self._prepare_order_lines(order_data)],
-            'invoice_status': 'no',
-            'partner_shipping_id': self._find_or_create_delivery_partner(order_data).id,
-            'require_signature': False,
-            'require_payment': False,
-            'fiscal_position_id': self.env['account.fiscal.position']._get_fiscal_position(self.company_id.id),
-            'company_id': self.company_id.id,
-            'user_id': self.user_id.id,
-            'team_id': self.team_id.id,
-            'amazon_order_ref': amazon_order_ref,
-            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id': 11917,
-            'purchase_order': amazon_order_ref,
-            'order_address': order_data.get("ShippingAddress", {}),
-            'order_customer': order_data.get("BuyerName"),
-            'order_phone': order_data.get("BuyerPhone"),
-            'x_studio_zip': order_data.get("ShippingAddress", {}).get("PostalCode"),
-        }
-
-        # 🔎 Search if order already exists
+        # Avoid duplicate orders
         existing_order = self.env['sale.order'].search([
-            ('purchase_order', '=', amazon_order_ref),
+            ('amazon_order_ref', '=', order_data['AmazonOrderId']),
             ('company_id', '=', self.company_id.id)
         ], limit=1)
-
         if existing_order:
-            _logger.info("Amazon order %s already exists (SO %s). Updating details.", amazon_order_ref, existing_order.id)
-            existing_order.write({
-                'order_customer': order_vals['order_customer'],
-                'order_phone': order_vals['order_phone'],
-                'x_studio_zip': order_vals['x_studio_zip'],
-                'order_address': order_vals['order_address'],
-            })
-            order = existing_order
-        else:
-            order = self.env['sale.order'].with_company(self.company_id).create(order_vals)
+            return existing_order
 
-        return order
-
+        order_vals = self._prepare_order_values(order_data)
+        return self.env['sale.order'].with_context(
+            mail_create_nosubscribe=True
+    ).with_company(self.company_id).create(order_vals)
 
 
     def _prepare_order_values(self, order_data):
@@ -662,33 +626,31 @@ class AmazonAccount(models.Model):
         )
 
         order_vals = {
-        'origin': f"Amazon Order {amazon_order_ref}",
-        'state': 'sale',
-        'locked': fulfillment_channel == 'AFN',
-        'date_order': purchase_date,
-
-        'pricelist_id': self._find_or_create_pricelist(currency).id,
-        'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
-        'invoice_status': 'no',
-        'partner_shipping_id': delivery_partner.id,
-        'require_signature': False,
-        'require_payment': False,
-        'fiscal_position_id': fiscal_position.id,
-        'company_id': self.company_id.id,
-        'user_id': self.user_id.id,
-        'team_id': self.team_id.id,
-        'amazon_order_ref': amazon_order_ref,
-        'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-        'partner_id': 11917,
-        'purchase_order': amazon_order_ref,
-        'order_address': order_address,
-
-        # ✅ Fixed customer info
-        'order_customer': contact_partner.name if contact_partner else '',
-        'order_phone': contact_partner.phone or contact_partner.mobile or '',
-        'x_studio_zip': contact_partner.zip or '',
-    }
-
+            'origin': f"Amazon Order {amazon_order_ref}",
+            'state': 'sale',
+            'locked': fulfillment_channel == 'AFN',
+            'date_order': purchase_date,
+        
+            'pricelist_id': self._find_or_create_pricelist(currency).id,
+            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
+            'invoice_status': 'no',
+            'partner_shipping_id': delivery_partner.id,
+            'require_signature': False,
+            'require_payment': False,
+            'fiscal_position_id': fiscal_position.id,
+            'company_id': self.company_id.id,
+            'user_id': self.user_id.id,
+            'team_id': self.team_id.id,
+            'amazon_order_ref': amazon_order_ref,
+            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
+            'order_address':order_address,
+            'order_customer':contact_partner,
+    'order_phone': contact_partner.phone or contact_partner.mobile or '',
+    'x_studio_zip': contact_partner.zip or '',
+           
+        }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
@@ -990,8 +952,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('skus'),  
-            'product_template_id':kwargs.get('skus'),
+            'barcode_scan':kwargs.get('skus'),
+            'product_template_id': kwargs.get('skus'),
         }
 
 
