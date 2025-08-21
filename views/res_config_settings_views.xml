@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action to open Amazon Accounts list -->
+    <record id="list_amazon_account_action" model="ir.actions.act_window">
+        <field name="name">Manage Amazon Accounts</field>
+        <field name="res_model">amazon.account</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Register and manage your Amazon Seller Central accounts here.
+            </p>
+            <p>
+                Amazon accounts are used to connect your Amazon Seller Central to Odoo.
+            </p>
+            <p>
+                Register your accounts to start synchronizing orders, products, and more.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action to open Amazon Marketplaces list -->
+    <record id="list_amazon_marketplace_action" model="ir.actions.act_window">
+        <field name="name">Amazon Marketplaces</field>
+        <field name="res_model">amazon.marketplace</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Action to open Amazon Products list -->
+    <record id="list_amazon_product_action" model="ir.actions.act_window">
+        <field name="name">Amazon Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- ================= Menus ================= -->
+
+    <!-- Top-level Amazon menu -->
+    <menuitem id="menu_amazon_root"
+              name="Amazon"
+              sequence="10"
+              groups="base.group_user"/>
+
+    <!-- Submenu for Accounts -->
+    <menuitem id="menu_amazon_accounts"
+              name="Accounts"
+              parent="menu_amazon_root"
+              action="list_amazon_account_action"
+              sequence="20"/>
+
+    <!-- Submenu for Marketplaces -->
+    <menuitem id="menu_amazon_marketplaces"
+              name="Marketplaces"
+              parent="menu_amazon_root"
+              action="list_amazon_marketplace_action"
+              sequence="30"/>
+
+    <!-- Submenu for Products -->
+    <menuitem id="menu_amazon_products"
+              name="Products"
+              parent="menu_amazon_root"
+              action="list_amazon_product_action"
+              sequence="40"/>
+
+    <!-- Inherit the configuration settings form -->
+    <record id="custom_res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sale.amazon.custom</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='amazon_connector']" position="inside">
+                <div class="mt16">
+                    <!-- Button to open Amazon Accounts list -->
+                    <div class="mb8">
+                        <button name="%(custom_sale_amazon.list_amazon_account_action)d"
+                                string="Amazon Accounts"
+                                icon="fa-shopping-cart"
+                                type="action"
+                                class="btn-primary"/>
+                    </div>
+                    <!-- Button to open Amazon Marketplaces list -->
+                    <div class="mb8">
+                        <button name="%(custom_sale_amazon.list_amazon_marketplace_action)d"
+                                string="Amazon Marketplaces"
+                                icon="fa-globe"
+                                type="action"
+                                class="btn-secondary"
+                                groups="base.group_no_one"/>
+                    </div>
+                    <!-- Button for default products -->
+                    <div>
+                       <button name="action_view_default_amazon_products"
+                                string="Default Products"
+                                icon="oi-arrow-right"
+                                type="object"
+                                class="btn-link"
+                                groups="base.group_no_one"/>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Action to open custom Res Config Settings -->
+    <record id="action_amazon_settings" model="ir.actions.act_window">
+        <field name="name">Amazon Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="custom_res_config_settings_view_form"/>
+        <field name="target">current</field>
+        <field name="context">{'module': 'custom_sale_amazon'}</field>
+    </record>
+
+    <!-- Submenu for Amazon Settings -->
+    <menuitem id="menu_amazon_settings"
+              name="Settings"
+              parent="menu_amazon_root"
+              action="action_amazon_settings"
+              sequence="50"/>
+</odoo>
