@@ -646,9 +646,9 @@ class AmazonAccount(models.Model):
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
             'order_address':order_address, 
-                'order_customer': contact_partner.name if contact_partner else '',
-    'order_phone': contact_partner.phone or contact_partner.mobile or '',
-    'x_studio_zip': contact_partner.zip or '',
+            'order_customer': contact_partner.name or contact_partner   or '',
+            'order_phone': contact_partner.phone or contact_partner.mobile or '',
+            'x_studio_zip': contact_partner.zip or '',
            
         }
 
