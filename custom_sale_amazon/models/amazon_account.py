@@ -676,7 +676,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917,  
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
             'order_address':order_address,
             'order_customer':contact_partner, 
         }
@@ -793,9 +794,7 @@ class AmazonAccount(models.Model):
         return contact, delivery
 
     def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
-        """Prepare sale.order.line values for an Amazon order.
-        Only sync if product with matching SKU exists in Odoo.
-        """
+        """Prepare sale.order.line values for an Amazon order."""
 
         def pull_items_data(amazon_order_ref_):
             """Fetch all order items in batches from Amazon API."""
@@ -811,6 +810,7 @@ class AmazonAccount(models.Model):
         self.ensure_one()
 
         amazon_order_ref = order_data['AmazonOrderId']
+        order_fulfillment_channel = order_data['FulfillmentChannel']
         marketplace_api_ref = order_data['MarketplaceId']
 
         items_data = pull_items_data(amazon_order_ref)
@@ -820,13 +820,36 @@ class AmazonAccount(models.Model):
             # Amazon SKU
             sku = item_data['SellerSKU']
 
+            # Marketplace
+            marketplace = self.active_marketplace_ids.filtered(
+                lambda m: m.api_ref == marketplace_api_ref
+            )
+
+            # Offer (still needed for metadata, but no auto product creation)
+            offer = self.env['amazon.offer'].search([
+                ('sku', '=', sku),
+                ('marketplace_id', '=', marketplace.id)
+            ], limit=1)
+
+            # Reset invalid feed ref if needed
+            if offer and offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
+                try:
+                    feed_data = json.loads(offer.amazon_feed_ref)
+                except json.JSONDecodeError:
+                    feed_data = None
+                offer_fulfill_channel = None
+                if isinstance(feed_data, dict):
+                    offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
+                if order_fulfillment_channel != offer_fulfill_channel:
+                    offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
+
             # Try to find Odoo product by default_code == Amazon SKU
             product = self.env['product.product'].search([
                 ('default_code', '=', sku),
                 *self.env['product.product']._check_company_domain(self.company_id),
             ], limit=1)
 
-            # 🚨 Skip if no product exists
+            # 🚨 Skip if product does not exist
             if not product:
                 _logger.warning("Amazon Sync: SKU %s not found in Odoo. Order line skipped.", sku)
                 continue
@@ -852,7 +875,6 @@ class AmazonAccount(models.Model):
             # Prices
             sales_price = float(item_data.get('ItemPrice', {}).get('Amount', 0.0))
             tax_amount = float(item_data.get('ItemTax', {}).get('Amount', 0.0))
-            marketplace = self.active_marketplace_ids.filtered(lambda m: m.api_ref == marketplace_api_ref)
             original_subtotal = sales_price - tax_amount if marketplace.tax_included else sales_price
             subtotal = self._recompute_subtotal(original_subtotal, tax_amount, taxes, currency, fiscal_pos)
 
@@ -876,6 +898,7 @@ class AmazonAccount(models.Model):
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
+                amazon_offer_id=offer.id if offer else False,
                 skus=sku,
             ))
 
