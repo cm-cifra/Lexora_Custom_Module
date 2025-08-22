@@ -826,6 +826,7 @@ class AmazonAccount(models.Model):
             )
   
             # Try to find Odoo product by default_code == Amazon SKU
+            # Try to find Odoo product by default_code == Amazon SKU
             product = self.env['product.product'].search([
                 ('default_code', '=', sku),
                 *self.env['product.product']._check_company_domain(self.company_id),
@@ -834,10 +835,15 @@ class AmazonAccount(models.Model):
             if product:
                 product_id = product.id
             else:
-                # fallback to product linked on offer
-                product_id = offer.product_id.id
+                _logger.warning(
+                    "Amazon SKU %s not found in Odoo for order %s. Skipping this item.",
+                    sku, amazon_order_ref
+                )
+                # either skip the line completely:
+                continue
+                # OR fallback to a generic product:
+                # product_id = self.env.ref('your_module.amazon_placeholder_product').id
 
-            # Taxes
             product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
                 [*self.env['account.tax']._check_company_domain(self.company_id)]
             )
