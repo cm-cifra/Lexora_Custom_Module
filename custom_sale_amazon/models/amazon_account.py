@@ -530,29 +530,31 @@ class AmazonAccount(models.Model):
         }
 
     def _process_order_data(self, order_data):
-        """ Process the provided order data and return the matching sales order, if any.
-
-        If no matching sales order is found, a new one is created if it is in a 'synchronizable'
-        status: 'Shipped' or 'Unshipped', if it is respectively an FBA or an FBA order. If the
-        matching sales order already exists and the Amazon order was canceled, the sales order is
-        also canceled. If the matching sales order already exists and the order data confirm that a
-        FBM order got shipped, we update the shipping status when it's needed.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to process.
-        :return: The matching Amazon order, if any, as a `sale.order` record.
-        :rtype: recordset of `sale.order`
-        """
         self.ensure_one()
 
-        # Search for the sales order based on its Amazon order reference.
         amazon_order_ref = order_data['AmazonOrderId']
         order = self.env['sale.order'].search(
             [('amazon_order_ref', '=', amazon_order_ref)], limit=1
         )
         amazon_status = order_data['OrderStatus']
         fulfillment_channel = order_data['FulfillmentChannel']
+
+        # ✅ Check if all products exist in Odoo before syncing
+        order_lines = order_data.get('OrderItems', [])
+        missing_products = []
+        for line in order_lines:
+            sku = line.get('SellerSKU')
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+            if not product:
+                missing_products.append(sku)
+
+        if missing_products:
+            _logger.warning(
+                "Skipped Amazon order %(ref)s because the following SKUs were not found in Odoo: %(skus)s",
+                {'ref': amazon_order_ref, 'skus': ', '.join(missing_products)}
+            )
+            return False  # 🚫 Do not sync this order
+
         if not order:  # No sales order was found with the given Amazon order reference.
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel]:
                 # Create the sales order and generate stock moves depending on the Amazon channel.
@@ -574,7 +576,7 @@ class AmazonAccount(models.Model):
         else:  # The sales order already exists.
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
-            )  # Consider any "unsynced" status so that we synchronize updates made from Amazon.
+            )
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
                 _logger.info(
@@ -582,14 +584,6 @@ class AmazonAccount(models.Model):
                     " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
             elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                # This can happen in 3 cases:
-                # 1. The processing of the feed of a batch of pickings failed on Amazon side in a
-                # way that we couldn't tell which picking are faulty. In that case, all pickings of
-                # the batch were flagged as in error. The order status update allows correcting the
-                # status of non-faulty pickings while leaving the faulty ones in error.
-                # 2. The shipping was arranged directly from Amazon's backend.
-                # 3. The user uses a delivery method that contacted Amazon to send the picking
-                # information before we did.
                 unsynced_pickings.amazon_sync_status = 'done'
                 _logger.info(
                     "Forced the picking synchronization status to 'done' for sales order with"
@@ -651,6 +645,19 @@ class AmazonAccount(models.Model):
                     'company_id': self.company_id.id,
                 })
 
+        # Build string address for order_address
+        order_address = ", ".join(
+            filter(None, [
+                delivery_partner.name,
+                delivery_partner.street,
+                delivery_partner.street2,
+                delivery_partner.city,
+                delivery_partner.zip,
+                delivery_partner.state_id.name if delivery_partner.state_id else None,
+                delivery_partner.country_id.name if delivery_partner.country_id else None,
+            ])
+        )
+
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
             'state': 'sale',
@@ -671,8 +678,9 @@ class AmazonAccount(models.Model):
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
-            'order_address':delivery_partner.id,
+            'order_address':order_address,
             'order_customer':contact_partner,
+             
            
         }
 
@@ -977,6 +985,7 @@ class AmazonAccount(models.Model):
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
             'barcode_scan':kwargs.get('skus'),
+            'product_template_id': kwargs.get('skus'),
         }
 
 
@@ -1043,28 +1052,28 @@ class AmazonAccount(models.Model):
     def _find_matching_product(
         self, internal_reference, default_xmlid, default_name, default_type, fallback=True
     ):
+        """ Find the matching product for a given internal reference.
+
+        If no product is found for the given internal reference, we fall back on the default
+        product. If the default product was deleted, we restore it.
+
+        :param str internal_reference: The internal reference of the product to be searched.
+        :param str default_xmlid: The xmlid of the default product to use as fallback.
+        :param str default_name: The name of the default product to use as fallback.
+        :param str default_type: The product type of the default product to use as fallback.
+        :param bool fallback: Whether we should fall back to the default product when no product
+                              matching the provided internal reference is found.
+        :return: The matching product.
+        :rtype: record of `product.product`
+        """
         self.ensure_one()
-
-        # First, try to find an existing product by barcode
-        product = self.env['product.product'].search([
-            ('barcode', '=', internal_reference),
-            *self.env['product.product']._check_company_domain(self.company_id),
-        ], limit=1)
-
-        if product:
-            return product
-
-        # Existing logic to find by default_code
         product = self.env['product.product'].search([
             *self.env['product.product']._check_company_domain(self.company_id),
             ('default_code', '=', internal_reference),
         ], limit=1)
-
-        if not product and fallback:
-            # fallback to default product
+        if not product and fallback:  # Fallback to the default product
             product = self.env.ref('sale_amazon.%s' % default_xmlid, raise_if_not_found=False)
-        if not product and fallback:
-            # restore default product if deleted
+        if not product and fallback:  # Restore the default product if it was deleted
             product = self.env['product.product']._restore_data_product(
                 default_name, default_type, default_xmlid
             )
