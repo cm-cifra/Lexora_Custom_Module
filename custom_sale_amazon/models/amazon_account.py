@@ -976,17 +976,30 @@ class AmazonAccount(models.Model):
         return order_lines_values
 
     def _convert_to_order_line_values(self, **kwargs):
-        """ Convert and complete a dict of values to comply with fields of `sale.order.line`.
+        """ Convert and complete a dict of values to comply with fields of `sale.order.line`. """
 
-        :param dict kwargs: The values to convert and complete.
-        :return: The completed values.
-        :rtype: dict
-        """
         subtotal = kwargs.get('subtotal', 0)
         quantity = kwargs.get('quantity', 1)
+
+        # If SKU is passed, resolve product & template
+        sku = kwargs.get('skus')
+        product_id = kwargs.get('product_id')
+        product_template_id = False
+
+        if sku and not product_id:
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+            if product:
+                product_id = product.id
+                product_template_id = product.product_tmpl_id.id
+        elif product_id:
+            product = self.env['product.product'].browse(product_id)
+            if product.exists():
+                product_template_id = product.product_tmpl_id.id
+
         return {
             'name': kwargs.get('description', ''),
-            'product_id': kwargs.get('product_id'),
+            'product_id': sku,
+            'product_template_id': product_template_id,
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
@@ -994,9 +1007,9 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('skus'),
-            'product_template_id': kwargs.get('skus'),
+            'barcode_scan': sku,  # keep SKU reference for tracking/debug
         }
+
 
 
 
