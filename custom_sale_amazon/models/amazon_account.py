@@ -1043,28 +1043,28 @@ class AmazonAccount(models.Model):
     def _find_matching_product(
         self, internal_reference, default_xmlid, default_name, default_type, fallback=True
     ):
-        """ Find the matching product for a given internal reference.
-
-        If no product is found for the given internal reference, we fall back on the default
-        product. If the default product was deleted, we restore it.
-
-        :param str internal_reference: The internal reference of the product to be searched.
-        :param str default_xmlid: The xmlid of the default product to use as fallback.
-        :param str default_name: The name of the default product to use as fallback.
-        :param str default_type: The product type of the default product to use as fallback.
-        :param bool fallback: Whether we should fall back to the default product when no product
-                              matching the provided internal reference is found.
-        :return: The matching product.
-        :rtype: record of `product.product`
-        """
         self.ensure_one()
+
+        # First, try to find an existing product by barcode
+        product = self.env['product.product'].search([
+            ('barcode', '=', internal_reference),
+            *self.env['product.product']._check_company_domain(self.company_id),
+        ], limit=1)
+
+        if product:
+            return product
+
+        # Existing logic to find by default_code
         product = self.env['product.product'].search([
             *self.env['product.product']._check_company_domain(self.company_id),
             ('default_code', '=', internal_reference),
         ], limit=1)
-        if not product and fallback:  # Fallback to the default product
+
+        if not product and fallback:
+            # fallback to default product
             product = self.env.ref('sale_amazon.%s' % default_xmlid, raise_if_not_found=False)
-        if not product and fallback:  # Restore the default product if it was deleted
+        if not product and fallback:
+            # restore default product if deleted
             product = self.env['product.product']._restore_data_product(
                 default_name, default_type, default_xmlid
             )
