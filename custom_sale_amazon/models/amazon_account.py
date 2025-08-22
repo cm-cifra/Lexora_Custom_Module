@@ -833,7 +833,7 @@ class AmazonAccount(models.Model):
             ], limit=1)
 
             if product:
-                product_id = product.id
+                product_id = product.sku
             else:
                 _logger.warning(
                     "Amazon SKU %s not found in Odoo for order %s. Skipping this item.",
