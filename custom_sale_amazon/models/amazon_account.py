@@ -679,9 +679,7 @@ class AmazonAccount(models.Model):
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
             'order_address':order_address,
-            'order_customer':contact_partner,
-             
-           
+            'order_customer':contact_partner, 
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
@@ -826,22 +824,7 @@ class AmazonAccount(models.Model):
             marketplace = self.active_marketplace_ids.filtered(
                 lambda m: m.api_ref == marketplace_api_ref
             )
-
-            # Offer (amazon.offer record)
-            offer = self._find_or_create_offer(sku, marketplace)
-
-            # Reset invalid feed ref if needed
-            if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
-                try:
-                    feed_data = json.loads(offer.amazon_feed_ref)
-                except json.JSONDecodeError:
-                    feed_data = None
-                offer_fulfill_channel = None
-                if isinstance(feed_data, dict):
-                    offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
-                if order_fulfillment_channel != offer_fulfill_channel:
-                    offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
-
+  
             # Try to find Odoo product by default_code == Amazon SKU
             product = self.env['product.product'].search([
                 ('default_code', '=', sku),
