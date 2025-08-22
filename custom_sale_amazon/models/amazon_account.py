@@ -794,7 +794,9 @@ class AmazonAccount(models.Model):
         return contact, delivery
 
     def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
-        """Prepare sale.order.line values for an Amazon order."""
+        """Prepare sale.order.line values for an Amazon order.
+        Only sync if product with matching SKU exists in Odoo.
+        """
 
         def pull_items_data(amazon_order_ref_):
             """Fetch all order items in batches from Amazon API."""
@@ -810,7 +812,6 @@ class AmazonAccount(models.Model):
         self.ensure_one()
 
         amazon_order_ref = order_data['AmazonOrderId']
-        order_fulfillment_channel = order_data['FulfillmentChannel']
         marketplace_api_ref = order_data['MarketplaceId']
 
         items_data = pull_items_data(amazon_order_ref)
@@ -820,31 +821,21 @@ class AmazonAccount(models.Model):
             # Amazon SKU
             sku = item_data['SellerSKU']
 
-            # Marketplace
-            marketplace = self.active_marketplace_ids.filtered(
-                lambda m: m.api_ref == marketplace_api_ref
-            )
-  
-            # Try to find Odoo product by default_code == Amazon SKU
             # Try to find Odoo product by default_code == Amazon SKU
             product = self.env['product.product'].search([
                 ('default_code', '=', sku),
                 *self.env['product.product']._check_company_domain(self.company_id),
             ], limit=1)
 
-            if product:
-                product_id = product.sku
-            else:
-                _logger.warning(
-                    "Amazon SKU %s not found in Odoo for order %s. Skipping this item.",
-                    sku, amazon_order_ref
-                )
-                # either skip the line completely:
+            # 🚨 Skip if no product exists
+            if not product:
+                _logger.warning("Amazon Sync: SKU %s not found in Odoo. Order line skipped.", sku)
                 continue
-                # OR fallback to a generic product:
-                # product_id = self.env.ref('your_module.amazon_placeholder_product').id
 
-            product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
+            product_id = product.id
+
+            # Taxes
+            product_taxes = product.taxes_id.filtered_domain(
                 [*self.env['account.tax']._check_company_domain(self.company_id)]
             )
             taxes = fiscal_pos.map_tax(product_taxes) if fiscal_pos else product_taxes
@@ -862,6 +853,7 @@ class AmazonAccount(models.Model):
             # Prices
             sales_price = float(item_data.get('ItemPrice', {}).get('Amount', 0.0))
             tax_amount = float(item_data.get('ItemTax', {}).get('Amount', 0.0))
+            marketplace = self.active_marketplace_ids.filtered(lambda m: m.api_ref == marketplace_api_ref)
             original_subtotal = sales_price - tax_amount if marketplace.tax_included else sales_price
             subtotal = self._recompute_subtotal(original_subtotal, tax_amount, taxes, currency, fiscal_pos)
 
@@ -885,7 +877,6 @@ class AmazonAccount(models.Model):
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
-                amazon_offer_id=offer.id,
                 skus=sku,
             ))
 
@@ -910,7 +901,7 @@ class AmazonAccount(models.Model):
                     order_lines_values.append(self._convert_to_order_line_values(
                         item_data=item_data,
                         product_id=gift_wrap_product.id,
-                        description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name),
+                        description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, product.name),
                         subtotal=gift_wrap_subtotal,
                         tax_ids=gift_wrap_taxes.ids,
                     ))
@@ -946,7 +937,7 @@ class AmazonAccount(models.Model):
                 order_lines_values.append(self._convert_to_order_line_values(
                     item_data=item_data,
                     product_id=shipping_product.id,
-                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name),
+                    description=_("[%s] Delivery Charges for %s", shipping_code, product.name),
                     subtotal=shipping_subtotal,
                     tax_ids=shipping_taxes.ids,
                     discount=ship_discount_subtotal,
