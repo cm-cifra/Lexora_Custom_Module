@@ -693,7 +693,7 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917, 
-            'purchase_order':amazon_order_ref,
+             
             'order_address':order_add, 
             'order_customer': contact_partner.name or contact_partner   or '',
             'order_phone': contact_partner.phone or contact_partner.mobile or '',
