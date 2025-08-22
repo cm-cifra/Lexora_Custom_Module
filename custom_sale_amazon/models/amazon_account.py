@@ -624,6 +624,17 @@ class AmazonAccount(models.Model):
                 delivery_partner.country_id.name if delivery_partner.country_id else None,
             ])
         )
+        user_address = ", ".join(
+            filter(None, [
+              
+                delivery_partner.street,
+                delivery_partner.street2,
+                delivery_partner.city,
+                delivery_partner.zip,
+                delivery_partner.state_id.name if delivery_partner.state_id else None,
+                delivery_partner.country_id.name if delivery_partner.country_id else None,
+            ])
+        )
 
         order_vals = {
             'origin': f"Amazon Order {amazon_order_ref}",
@@ -644,9 +655,9 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917,  
-            'order_address':order_address, 
+            'order_address':user_address, 
             'order_customer': contact_partner.name or contact_partner   or '',
-            'order_phone': contact_partner.phone or contact_partner.mobile or '',
+            'order_phone': contact_partner.phone or contact_partner.mobile or delivery_partner.phone or '',
             'x_studio_zip': contact_partner.zip or '',
            
         }
