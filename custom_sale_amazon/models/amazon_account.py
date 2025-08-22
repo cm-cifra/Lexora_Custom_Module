@@ -582,14 +582,7 @@ class AmazonAccount(models.Model):
                     " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
                 )
             elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                # This can happen in 3 cases:
-                # 1. The processing of the feed of a batch of pickings failed on Amazon side in a
-                # way that we couldn't tell which picking are faulty. In that case, all pickings of
-                # the batch were flagged as in error. The order status update allows correcting the
-                # status of non-faulty pickings while leaving the faulty ones in error.
-                # 2. The shipping was arranged directly from Amazon's backend.
-                # 3. The user uses a delivery method that contacted Amazon to send the picking
-                # information before we did.
+                
                 unsynced_pickings.amazon_sync_status = 'done'
                 _logger.info(
                     "Forced the picking synchronization status to 'done' for sales order with"
@@ -1008,39 +1001,37 @@ class AmazonAccount(models.Model):
 
 
     def _find_or_create_offer(self, sku, marketplace):
-        """ Find or create the amazon offer based on the SKU and marketplace.
+        """ Find or create the amazon offer based on the SKU and marketplace. """
 
-        Note: self.ensure_one()
-
-        :param str sku: The SKU of the product.
-        :param recordset marketplace: The marketplace of the offer, as an `amazon.marketplace`
-               record.
-        :return: The amazon offer.
-        :rtype: record or `amazon.offer`
-        """
         self.ensure_one()
 
         offer = self.offer_ids.filtered(lambda o: o.sku == sku)
         if not offer:
+            # Try to find a product by internal reference (default_code == SKU)
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+
+            if not product:
+                # fallback if no SKU match found
+                product = self._find_matching_product(
+                    sku, 'default_product', 'Amazon Sales', 'consu'
+                )
+
             offer = self.env['amazon.offer'].with_context(tracking_disable=True).create({
                 'account_id': self.id,
                 'marketplace_id': marketplace.id,
-                'product_id': self._find_matching_product(
-                    sku, 'default_product', 'Amazon Sales', 'consu'
-                ).id,
+                'product_id': product.id,
                 'sku': sku,
                 'amazon_feed_ref': '{}',
             })
-        # If the offer has been linked with the default product, search if another product has now
-        # been assigned the current SKU as internal reference and update the offer if so.
-        # This trades off a bit of performance in exchange for a more expected behavior for the
-        # matching of products if one was assigned the right SKU after that the offer was created.
+
+        # If the offer was linked with the default product, re-check if a SKU was later added
         elif 'sale_amazon.default_product' in offer.product_id._get_external_ids().get(
             offer.product_id.id, []
         ):
-            product = self._find_matching_product(sku, '', '', '', fallback=False)
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
             if product:
                 offer.product_id = product.id
+
         return offer
 
     def _find_or_create_pricelist(self, currency):
