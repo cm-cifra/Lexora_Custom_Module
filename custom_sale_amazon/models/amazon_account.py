@@ -13,10 +13,9 @@ from odoo import _, api, exceptions, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY as CONCURRENCY_ERRORS
 
-from odoo.addons.sale_amazon import const, utils as amazon_utils
-from odoo.addons.sale_amazon.controllers.onboarding import compute_oauth_signature
-
-
+ 
+from .. import const, utils as amazon_utils
+from ..controllers.onboarding import compute_oauth_signature
 _logger = logging.getLogger(__name__)
 
 
@@ -605,19 +604,188 @@ class AmazonAccount(models.Model):
         return order
 
     def _create_order_from_data(self, order_data):
-        """ Create a new sales order based on the provided order data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to create a sales order from.
-        :return: The newly created sales order.
-        :rtype: record of `sale.order`
-        """
         self.ensure_one()
+
+        # Avoid duplicate orders
+        existing_order = self.env['sale.order'].search([
+            ('amazon_order_ref', '=', order_data['AmazonOrderId']),
+            ('company_id', '=', self.company_id.id)
+        ], limit=1)
+        if existing_order:
+            return existing_order
+
         order_vals = self._prepare_order_values(order_data)
         return self.env['sale.order'].with_context(
             mail_create_nosubscribe=True
-        ).with_company(self.company_id).create(order_vals)
+    ).with_company(self.company_id).create(order_vals)
+
+
+    def _prepare_order_values(self, order_data):
+        shipping_code = order_data.get('ShipServiceLevel')
+        shipping_product = self._find_matching_product(
+            shipping_code, 'shipping_product', 'Shipping', 'service'
+        )
+        currency = self.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', order_data['OrderTotal']['CurrencyCode'])], limit=1
+        )
+        amazon_order_ref = order_data['AmazonOrderId']
+        contact_partner, delivery_partner = self._find_or_create_partners_from_data(order_data)
+        fiscal_position = self.env['account.fiscal.position'].with_company(
+            self.company_id
+        )._get_fiscal_position(contact_partner, delivery_partner)
+
+        order_lines_values = self._prepare_order_lines_values(
+            order_data, currency, fiscal_position, shipping_product
+        )
+
+        fulfillment_channel = order_data['FulfillmentChannel']
+        purchase_date = dateutil.parser.parse(order_data['PurchaseDate']).replace(tzinfo=None)
+
+        # fallback Amazon customer if no buyer info exists
+        if not contact_partner:
+            contact_partner = self.env['res.partner'].search([('name', '=', 'Bell+Modern Amazon')], limit=1)
+            if not contact_partner:
+                contact_partner = self.env['res.partner'].create({
+                    'name': 'Bell+Modern Amazon',
+                    'customer_rank': 1,
+                    'company_id': self.company_id.id,
+                })
+
+        order_vals = {
+            'origin': f"Amazon Order {amazon_order_ref}",
+            'state': 'sale',
+            'locked': fulfillment_channel == 'AFN',
+            'date_order': purchase_date,
+        
+            'pricelist_id': self._find_or_create_pricelist(currency).id,
+            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
+            'invoice_status': 'no',
+            'partner_shipping_id': delivery_partner.id,
+            'require_signature': False,
+            'require_payment': False,
+            'fiscal_position_id': fiscal_position.id,
+            'company_id': self.company_id.id,
+            'user_id': self.user_id.id,
+            'team_id': self.team_id.id,
+            'amazon_order_ref': amazon_order_ref,
+            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
+            'order_address':delivery_partner.id,
+            'order_customer':contact_partner,
+           
+        }
+
+        if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
+            order_vals['warehouse_id'] = self.location_id.warehouse_id.id
+
+        return order_vals
+
+    def _find_or_create_partners_from_data(self, order_data):
+        """ Find or create the contact and delivery partners based on the provided order data.
+
+        Note: self.ensure_one()
+
+        :param dict order_data: The order data to find or create the partners from.
+        :return: The contact and delivery partners, as `res.partner` records. When the contact
+                 partner acts as delivery partner, the records are the same.
+        :rtype: tuple[record of `res.partner`, record of `res.partner`]
+        """
+        self.ensure_one()
+
+        amazon_order_ref = order_data['AmazonOrderId']
+        anonymized_email = order_data['BuyerInfo'].get('BuyerEmail', '')
+        buyer_name = order_data['BuyerInfo'].get('BuyerName', '')
+        fulfillment_channel = order_data['FulfillmentChannel']
+        shipping_address_info = order_data.get('ShippingAddress', {})
+        shipping_address_name = shipping_address_info.get('Name', '')
+        street = shipping_address_info.get('AddressLine1', '')
+        address_line2 = shipping_address_info.get('AddressLine2', '')
+        address_line3 = shipping_address_info.get('AddressLine3', '')
+        street2 = "%s %s" % (address_line2, address_line3) if address_line2 or address_line3 \
+            else None
+        zip_code = shipping_address_info.get('PostalCode', '')
+        city = shipping_address_info.get('City', '')
+        country_code = shipping_address_info.get('CountryCode', '')
+        state_code = shipping_address_info.get('StateOrRegion', '')
+        phone = shipping_address_info.get('Phone', '')
+        is_company = shipping_address_info.get('AddressType') == 'Commercial'
+        country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
+        state = self.env['res.country.state'].search([
+            ('country_id', '=', country.id),
+            '|', ('code', '=ilike', state_code), ('name', '=ilike', state_code),
+        ], limit=1)
+        partner_vals = {
+            'street': street,
+            'street2': street2,
+            'zip': zip_code,
+            'city': city,
+            'country_id': country.id,
+            'state_id': state.id,
+            'phone': phone,
+            'customer_rank': 1,
+            'company_id': self.company_id.id,
+            'amazon_email': anonymized_email,
+        }
+
+        # The contact partner is searched based on all the personal information and only if the
+        # amazon email is provided. A match thus only occurs if the customer had already made a
+        # previous order and if the personal information provided by the API did not change in the
+        # meantime. If there is no match, a new contact partner is created. This behavior is
+        # preferred over updating the personal information with new values because it allows using
+        # the correct contact details when invoicing the customer for an earlier order, should there
+        # be a change in the personal information.
+        contact = self.env['res.partner'].search([
+            *self.env['res.partner']._check_company_domain(self.company_id),
+            ('type', '=', 'contact'),
+            ('name', '=', buyer_name),
+            ('amazon_email', '=', anonymized_email),
+        ], limit=1) if anonymized_email else None  # Don't match random partners.
+        if not contact:
+            contact_name = buyer_name or f"Amazon Customer # {amazon_order_ref}"
+            contact = self.env['res.partner'].with_context(tracking_disable=True).create({
+                'name': contact_name,
+                'is_company': is_company,
+                **partner_vals,
+            })
+            if not contact.state_id and state_code and fulfillment_channel == 'MFN':
+                contact._amazon_create_activity_set_state(self.user_id.id, state_code)
+
+        # The contact partner acts as delivery partner if the address is strictly equal to that of
+        # the contact partner. If not, a delivery partner is created.
+        delivery = contact if (
+            contact.name == shipping_address_name
+            and contact.street == street
+            and (not contact.street2 or contact.street2 == street2)
+            and contact.zip == zip_code
+            and contact.city == city
+            and contact.country_id.id == country.id
+            and contact.state_id.id == state.id
+        ) else None
+        if not delivery:
+            delivery = self.env['res.partner'].search([
+                *self.env['res.partner']._check_company_domain(self.company_id),
+                ('parent_id', '=', contact.id),
+                ('type', '=', 'delivery'),
+                ('name', '=', shipping_address_name),
+                ('street', '=', street),
+                '|', ('street2', '=', False), ('street2', '=', street2),
+                ('zip', '=', zip_code),
+                ('city', '=', city),
+                ('country_id', '=', country.id),
+                ('state_id', '=', state.id),
+            ], limit=1)
+        if not delivery:
+            delivery = self.env['res.partner'].with_context(tracking_disable=True).create({
+                'name': shipping_address_name,
+                'type': 'delivery',
+                'parent_id': contact.id,
+                **partner_vals,
+            })
+            if not delivery.state_id and state_code and fulfillment_channel == 'MFN':
+                delivery._amazon_create_activity_set_state(self.user_id.id, state_code)
+
+        return contact, delivery
 
     def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
         """Prepare sale.order.line values for an Amazon order."""
@@ -788,294 +956,6 @@ class AmazonAccount(models.Model):
                 ))
 
         return order_lines_values
-  
-    def _find_or_create_partners_from_data(self, order_data):
-        """ Find or create the contact and delivery partners based on the provided order data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to find or create the partners from.
-        :return: The contact and delivery partners, as `res.partner` records. When the contact
-                 partner acts as delivery partner, the records are the same.
-        :rtype: tuple[record of `res.partner`, record of `res.partner`]
-        """
-        self.ensure_one()
-
-        amazon_order_ref = order_data['AmazonOrderId']
-        anonymized_email = order_data['BuyerInfo'].get('BuyerEmail', '')
-        buyer_name = order_data['BuyerInfo'].get('BuyerName', '')
-        fulfillment_channel = order_data['FulfillmentChannel']
-        shipping_address_info = order_data.get('ShippingAddress', {})
-        shipping_address_name = shipping_address_info.get('Name', '')
-        street = shipping_address_info.get('AddressLine1', '')
-        address_line2 = shipping_address_info.get('AddressLine2', '')
-        address_line3 = shipping_address_info.get('AddressLine3', '')
-        street2 = "%s %s" % (address_line2, address_line3) if address_line2 or address_line3 \
-            else None
-        zip_code = shipping_address_info.get('PostalCode', '')
-        city = shipping_address_info.get('City', '')
-        country_code = shipping_address_info.get('CountryCode', '')
-        state_code = shipping_address_info.get('StateOrRegion', '')
-        phone = shipping_address_info.get('Phone', '')
-        is_company = shipping_address_info.get('AddressType') == 'Commercial'
-        country = self.env['res.country'].search([('code', '=', country_code)], limit=1)
-        state = self.env['res.country.state'].search([
-            ('country_id', '=', country.id),
-            '|', ('code', '=ilike', state_code), ('name', '=ilike', state_code),
-        ], limit=1)
-        partner_vals = {
-            'street': street,
-            'street2': street2,
-            'zip': zip_code,
-            'city': city,
-            'country_id': country.id,
-            'state_id': state.id,
-            'phone': phone,
-            'customer_rank': 1,
-            'company_id': self.company_id.id,
-            'amazon_email': anonymized_email,
-        }
-
-        # The contact partner is searched based on all the personal information and only if the
-        # amazon email is provided. A match thus only occurs if the customer had already made a
-        # previous order and if the personal information provided by the API did not change in the
-        # meantime. If there is no match, a new contact partner is created. This behavior is
-        # preferred over updating the personal information with new values because it allows using
-        # the correct contact details when invoicing the customer for an earlier order, should there
-        # be a change in the personal information.
-        contact = self.env['res.partner'].search([
-            *self.env['res.partner']._check_company_domain(self.company_id),
-            ('type', '=', 'contact'),
-            ('name', '=', buyer_name),
-            ('amazon_email', '=', anonymized_email),
-        ], limit=1) if anonymized_email else None  # Don't match random partners.
-        if not contact:
-            contact_name = buyer_name or f"Amazon Customer # {amazon_order_ref}"
-            contact = self.env['res.partner'].with_context(tracking_disable=True).create({
-                'name': contact_name,
-                'is_company': is_company,
-                **partner_vals,
-            })
-            if not contact.state_id and state_code and fulfillment_channel == 'MFN':
-                contact._amazon_create_activity_set_state(self.user_id.id, state_code)
-
-        # The contact partner acts as delivery partner if the address is strictly equal to that of
-        # the contact partner. If not, a delivery partner is created.
-        delivery = contact if (
-            contact.name == shipping_address_name
-            and contact.street == street
-            and (not contact.street2 or contact.street2 == street2)
-            and contact.zip == zip_code
-            and contact.city == city
-            and contact.country_id.id == country.id
-            and contact.state_id.id == state.id
-        ) else None
-        if not delivery:
-            delivery = self.env['res.partner'].search([
-                *self.env['res.partner']._check_company_domain(self.company_id),
-                ('parent_id', '=', contact.id),
-                ('type', '=', 'delivery'),
-                ('name', '=', shipping_address_name),
-                ('street', '=', street),
-                '|', ('street2', '=', False), ('street2', '=', street2),
-                ('zip', '=', zip_code),
-                ('city', '=', city),
-                ('country_id', '=', country.id),
-                ('state_id', '=', state.id),
-            ], limit=1)
-        if not delivery:
-            delivery = self.env['res.partner'].with_context(tracking_disable=True).create({
-                'name': shipping_address_name,
-                'type': 'delivery',
-                'parent_id': contact.id,
-                **partner_vals,
-            })
-            if not delivery.state_id and state_code and fulfillment_channel == 'MFN':
-                delivery._amazon_create_activity_set_state(self.user_id.id, state_code)
-
-        return contact, delivery
-
-    def _prepare_order_lines_values(self, order_data, currency, fiscal_pos, shipping_product):
-        """ Prepare the values for the order lines to create based on Amazon data.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data related to the item data.
-        :param record currency: The currency of the sales order, as a `res.currency` record.
-        :param record fiscal_pos: The fiscal position of the sales order, as an
-                                  `account.fiscal.position` record.
-        :param record shipping_product: The shipping product matching the shipping code, as a
-                                        `product.product` record.
-        :return: The order lines values.
-        :rtype: dict
-        """
-        def pull_items_data(amazon_order_ref_):
-            """ Pull all item data for the order to synchronize.
-
-            :param str amazon_order_ref_: The Amazon reference of the order to synchronize.
-            :return: The items data.
-            :rtype: list
-            """
-            items_data_ = []
-            # Order items are pulled in batches. If more order items than those returned can be
-            # synchronized, the request results are paginated and the next page holds another batch.
-            has_next_page_ = True
-            while has_next_page_:
-                # Pull the next batch of order items.
-                items_batch_data_, has_next_page_ = amazon_utils.pull_batch_data(
-                    self, 'getOrderItems', {}, path_parameter=amazon_order_ref_
-                )
-                items_data_ += items_batch_data_['OrderItems']
-            return items_data_
-
-        self.ensure_one()
-
-        amazon_order_ref = order_data['AmazonOrderId']
-        order_fulfillment_channel = order_data['FulfillmentChannel']
-        marketplace_api_ref = order_data['MarketplaceId']
-
-        items_data = pull_items_data(amazon_order_ref)
-
-        order_lines_values = []
-        for item_data in items_data:
-            # Prepare the values for the product line.
-            sku = item_data['SellerSKU']
-            marketplace = self.active_marketplace_ids.filtered(
-                lambda m: m.api_ref == marketplace_api_ref
-            )
-            offer = self._find_or_create_offer(sku, marketplace)
-            if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
-                try:
-                    feed_data = json.loads(offer.amazon_feed_ref)
-                except json.JSONDecodeError:  # Field is an incorrect JSON
-                    feed_data = None
-                offer_fulfill_channel = None
-                if isinstance(feed_data, dict):  # Filtered out old `amazon_feed_ref` still stored
-                    offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
-                if order_fulfillment_channel != offer_fulfill_channel:  # old feed_ref included
-                    # This discrepancy might happen if the fulfillment channel was changed for an
-                    # offer in Amazon backend. But due to a known problem of ghost listings from
-                    # Amazon side, we can't trust the order either.
-                    offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
-
-            product_taxes = offer.product_id.taxes_id.filtered_domain(
-                [*self.env['account.tax']._check_company_domain(self.company_id)]
-            )
-            main_condition = item_data.get('ConditionId')
-            sub_condition = item_data.get('ConditionSubtypeId')
-            if not main_condition or main_condition.lower() == 'new':
-                description = "[%s] %s" % (sku, item_data['Title'])
-            else:
-                item_title = item_data['Title']
-                description = _(
-                    "[%s] %s\nCondition: %s - %s", sku, item_title, main_condition, sub_condition
-                )
-            sales_price = float(item_data.get('ItemPrice', {}).get('Amount', 0.0))
-            tax_amount = float(item_data.get('ItemTax', {}).get('Amount', 0.0))
-            original_subtotal = sales_price - tax_amount \
-                if marketplace.tax_included else sales_price
-            taxes = fiscal_pos.map_tax(product_taxes) if fiscal_pos else product_taxes
-            subtotal = self._recompute_subtotal(
-                original_subtotal, tax_amount, taxes, currency, fiscal_pos
-            )
-            promo_discount = float(item_data.get('PromotionDiscount', {}).get('Amount', '0'))
-            promo_disc_tax = float(item_data.get('PromotionDiscountTax', {}).get('Amount', '0'))
-            original_promo_discount_subtotal = promo_discount - promo_disc_tax \
-                if marketplace.tax_included else promo_discount
-            promo_discount_subtotal = self._recompute_subtotal(
-                original_promo_discount_subtotal, promo_disc_tax, taxes, currency, fiscal_pos
-            )
-            amazon_item_ref = item_data['OrderItemId']
-            order_lines_values.append(self._convert_to_order_line_values(
-                item_data=item_data,
-                product_id=offer.product_id.id,
-                description=description,
-                subtotal=subtotal,
-                tax_ids=taxes.ids,
-                quantity=item_data['QuantityOrdered'],
-                discount=promo_discount_subtotal,
-                amazon_item_ref=amazon_item_ref,
-                amazon_offer_id=offer.id,
-            ))
-
-            # Prepare the values for the gift wrap line.
-            if item_data.get('IsGift', 'false') == 'true':
-                item_gift_info = item_data.get('BuyerInfo', {})
-                gift_wrap_code = item_gift_info.get('GiftWrapLevel')
-                gift_wrap_price = float(item_gift_info.get('GiftWrapPrice', {}).get('Amount', '0'))
-                if gift_wrap_code and gift_wrap_price != 0:
-                    gift_wrap_product = self._find_matching_product(
-                        gift_wrap_code, 'default_product', 'Amazon Sales', 'consu'
-                    )
-                    gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
-                        [*self.env['account.tax']._check_company_domain(self.company_id)]
-                    )
-                    gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) \
-                        if fiscal_pos else gift_wrap_product_taxes
-                    gift_wrap_tax_amount = float(
-                        item_gift_info.get('GiftWrapTax', {}).get('Amount', '0')
-                    )
-                    original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount \
-                        if marketplace.tax_included else gift_wrap_price
-                    gift_wrap_subtotal = self._recompute_subtotal(
-                        original_gift_wrap_subtotal,
-                        gift_wrap_tax_amount,
-                        gift_wrap_taxes,
-                        currency,
-                        fiscal_pos,
-                    )
-                    order_lines_values.append(self._convert_to_order_line_values(
-                        item_data=item_data,
-                        product_id=gift_wrap_product.id,
-                        description=_(
-                            "[%s] Gift Wrapping Charges for %s",
-                            gift_wrap_code, offer.product_id.name
-                        ),
-                        subtotal=gift_wrap_subtotal,
-                        tax_ids=gift_wrap_taxes.ids,
-                    ))
-                gift_message = item_gift_info.get('GiftMessageText')
-                if gift_message:
-                    order_lines_values.append(self._convert_to_order_line_values(
-                        item_data=item_data,
-                        description=_("Gift message:\n%s", gift_message),
-                        display_type='line_note',
-                    ))
-
-            # Prepare the values for the delivery charges.
-            shipping_code = order_data.get('ShipServiceLevel')
-            shipping_price = float(item_data.get('ShippingPrice', {}).get('Amount', '0'))
-            if shipping_code and shipping_price != 0:
-                shipping_product_taxes = shipping_product.taxes_id.filtered_domain(
-                    [*self.env['account.tax']._check_company_domain(self.company_id)]
-                )
-                shipping_taxes = fiscal_pos.map_tax(shipping_product_taxes) if fiscal_pos \
-                    else shipping_product_taxes
-                shipping_tax_amount = float(item_data.get('ShippingTax', {}).get('Amount', '0'))
-                origin_ship_subtotal = shipping_price - shipping_tax_amount \
-                    if marketplace.tax_included else shipping_price
-                shipping_subtotal = self._recompute_subtotal(
-                    origin_ship_subtotal, shipping_tax_amount, shipping_taxes, currency, fiscal_pos
-                )
-                ship_discount = float(item_data.get('ShippingDiscount', {}).get('Amount', '0'))
-                ship_disc_tax = float(item_data.get('ShippingDiscountTax', {}).get('Amount', '0'))
-                origin_ship_disc_subtotal = ship_discount - ship_disc_tax \
-                    if marketplace.tax_included else ship_discount
-                ship_discount_subtotal = self._recompute_subtotal(
-                    origin_ship_disc_subtotal, ship_disc_tax, shipping_taxes, currency, fiscal_pos
-                )
-                order_lines_values.append(self._convert_to_order_line_values(
-                    item_data=item_data,
-                    product_id=shipping_product.id,
-                    description=_(
-                        "[%s] Delivery Charges for %s", shipping_code, offer.product_id.name
-                    ),
-                    subtotal=shipping_subtotal,
-                    tax_ids=shipping_taxes.ids,
-                    discount=ship_discount_subtotal,
-                ))
-
-        return order_lines_values
 
     def _convert_to_order_line_values(self, **kwargs):
         """ Convert and complete a dict of values to comply with fields of `sale.order.line`.
@@ -1096,7 +976,10 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
+            'barcode_scan':kwargs.get('skus'),
         }
+
+
 
     def _find_or_create_offer(self, sku, marketplace):
         """ Find or create the amazon offer based on the SKU and marketplace.
