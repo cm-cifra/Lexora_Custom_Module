@@ -612,7 +612,6 @@ class AmazonAccount(models.Model):
             mail_create_nosubscribe=True
     ).with_company(self.company_id).create(order_vals)
 
-
     def _prepare_order_values(self, order_data):
         shipping_code = order_data.get('ShipServiceLevel')
         shipping_product = self._find_matching_product(
@@ -627,6 +626,15 @@ class AmazonAccount(models.Model):
             self.company_id
         )._get_fiscal_position(contact_partner, delivery_partner)
 
+        # ✅ Check products by SKU before preparing order lines
+        for item in order_data.get("OrderItems", []):
+            sku = item.get("SellerSKU")
+            product = self.env["product.product"].search([("default_code", "=", sku)], limit=1)
+            if not product:
+                _logger.warning("⏭️ Skipping order %s because SKU %s was not found in Odoo.", amazon_order_ref, sku)
+                return None  # 🚫 Stop syncing this order
+
+        # If all SKUs exist, prepare lines
         order_lines_values = self._prepare_order_lines_values(
             order_data, currency, fiscal_position, shipping_product
         )
@@ -645,17 +653,6 @@ class AmazonAccount(models.Model):
                 })
 
         # Build string address for order_address
-        order_address = ", ".join(
-            filter(None, [
-                delivery_partner.name,
-                delivery_partner.street,
-                delivery_partner.street2,
-                delivery_partner.city,
-                delivery_partner.zip,
-                delivery_partner.state_id.name if delivery_partner.state_id else None,
-                delivery_partner.country_id.name if delivery_partner.country_id else None,
-            ])
-        )
         order_add = ", ".join(
             filter(None, [ 
                 delivery_partner.street,
@@ -672,7 +669,6 @@ class AmazonAccount(models.Model):
             'state': 'sale',
             'locked': fulfillment_channel == 'AFN',
             'date_order': purchase_date,
-        
             'pricelist_id': self._find_or_create_pricelist(currency).id,
             'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
             'invoice_status': 'no',
@@ -685,13 +681,11 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917, 
-             
-            'order_address':order_add, 
-            'order_customer': contact_partner.name or contact_partner   or '',
+            'partner_id': 11917,
+            'order_address': order_add, 
+            'order_customer': contact_partner.name or contact_partner or '',
             'order_phone': contact_partner.phone or contact_partner.mobile or '',
             'x_studio_zip': contact_partner.zip or '',
-           
         }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
@@ -699,6 +693,10 @@ class AmazonAccount(models.Model):
 
         return order_vals
 
+        
+
+    
+    
     def _find_or_create_partners_from_data(self, order_data):
         """ Find or create the contact and delivery partners based on the provided order data.
 
