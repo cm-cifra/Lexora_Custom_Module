@@ -646,7 +646,7 @@ class AmazonAccount(models.Model):
             'partner_id':11917, 
             'purchase_order':amazon_order_ref,
             'order_address':order_address,
-              'order_customer': contact_partner.name if contact_partner else '',  # ✅ fixed
+            'order_customer':contact_partner,
              
            
         }
