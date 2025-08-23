@@ -978,23 +978,32 @@ class AmazonAccount(models.Model):
 
         subtotal = kwargs.get('subtotal', 0)
         quantity = kwargs.get('quantity', 1)
-
-        product_id = kwargs.get('product_id')
-        product_template_id = False
         sku = kwargs.get('skus')
 
-        # If SKU exists but product_id is missing → search product
+        product_id = kwargs.get('product_id')
+        product_template_id = kwargs.get('product_template_id')
+
+        # If SKU exists but product_id is missing, try to find the product by SKU
         if sku and not product_id:
             product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
             if product:
                 product_id = product.id
-                product_template_id = product.product_tmpl_id.id
+            else:
+                # If product not found, do not sync this order line (return None)
+                return None
+            # Use SKU as product_template_id if default_code not found
+            product_template_id = product.product_tmpl_id.id
 
-        # If product_id exists → resolve template
+        # If product_id exists and product_template_id not set, resolve template
         if product_id and not product_template_id:
             product = self.env['product.product'].browse(product_id)
             if product.exists():
                 product_template_id = product.product_tmpl_id.id
+
+        # Only include the order line if product_id is resolved
+        if not product_id:
+            # Skip this line if no product is found or assigned
+            return None
 
         return {
             'name': kwargs.get('description', ''),
@@ -1009,9 +1018,6 @@ class AmazonAccount(models.Model):
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
             'barcode_scan': sku,  # keep raw SKU here (char field is fine)
         }
-
-
-
     def _find_or_create_offer(self, sku, marketplace):
         """ Find or create the amazon offer based on the SKU and marketplace. """
 
