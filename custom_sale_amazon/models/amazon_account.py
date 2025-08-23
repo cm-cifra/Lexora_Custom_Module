@@ -981,25 +981,27 @@ class AmazonAccount(models.Model):
         subtotal = kwargs.get('subtotal', 0)
         quantity = kwargs.get('quantity', 1)
 
-        # If SKU is passed, resolve product & template
-        sku = kwargs.get('skus')
         product_id = kwargs.get('product_id')
         product_template_id = False
+        sku = kwargs.get('skus')
 
+        # If SKU exists but product_id is missing → search product
         if sku and not product_id:
             product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
             if product:
                 product_id = product.id
                 product_template_id = product.product_tmpl_id.id
-        elif product_id:
+
+        # If product_id exists → resolve template
+        if product_id and not product_template_id:
             product = self.env['product.product'].browse(product_id)
             if product.exists():
                 product_template_id = product.product_tmpl_id.id
 
         return {
             'name': kwargs.get('description', ''),
-            'product_id': sku,
-            'product_template_id': product_template_id,
+            'product_id': product_id,  # ✅ must be int
+            'product_template_id': product_template_id,  # ✅ must be int
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
@@ -1007,9 +1009,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan': sku,  # keep SKU reference for tracking/debug
+            'barcode_scan': sku,  # keep raw SKU here (char field is fine)
         }
-
 
 
 
