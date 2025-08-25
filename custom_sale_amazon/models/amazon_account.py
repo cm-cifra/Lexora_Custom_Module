@@ -864,8 +864,8 @@ class AmazonAccount(models.Model):
             # --- Product Line ---
             order_lines_values.append(self._convert_to_order_line_values(
                 item_data=item_data,
-                product_id=product_id,
-                product_template_id=product_template_id,   # ✅ pass template_id
+                product_id=product_id,                   # ✅ product (for display)
+                product_template_id=product_template_id, # ✅ template (custom field)
                 description=description,
                 subtotal=subtotal,
                 tax_ids=taxes.ids,
@@ -876,8 +876,7 @@ class AmazonAccount(models.Model):
                 skus=sku,
             ))
 
-            # (Gift wrap + shipping code stays same as your original, just keep it untouched…)
-
+            # Gift wrap + shipping lines remain same...
         return order_lines_values
 
 
@@ -887,8 +886,8 @@ class AmazonAccount(models.Model):
         quantity = kwargs.get('quantity', 1)
         return {
             'name': kwargs.get('description', ''),
-            'product_id': kwargs.get('product_id'),
-            'product_template_id': kwargs.get('product_template_id'),  # ✅ now real template id
+            'product_id': kwargs.get('product_id'),   # 👈 required for product to display
+            'product_template_id': kwargs.get('product_template_id') or False,  # 👈 works if custom field exists
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
@@ -898,7 +897,6 @@ class AmazonAccount(models.Model):
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
             'barcode_scan': kwargs.get('skus'),
         }
-
 
 
     def _find_or_create_offer(self, sku, marketplace):
