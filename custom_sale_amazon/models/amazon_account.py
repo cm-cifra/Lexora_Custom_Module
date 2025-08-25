@@ -388,38 +388,26 @@ class AmazonAccount(models.Model):
             )
 
     def _sync_orders(self, auto_commit=True):
-        """ Synchronize the accounts' sales orders that were recently updated on Amazon.
+        """ Synchronize the accounts' sales orders that were recently updated on Amazon,
+            including shipped orders. """
 
-        If called on an empty recordset, the orders of all active accounts are synchronized instead.
-
-        Note: This method is called by the `ir_cron_sync_amazon_orders` cron.
-
-        :param bool auto_commit: Whether the database cursor should be committed as soon as an order
-                                 is successfully synchronized.
-        :return: None
-        """
         accounts = self or self.search([])
         for account in accounts:
-            account = account[0]  # Avoid pre-fetching after each cache invalidation.
+            account = account[0]
             amazon_utils.ensure_account_is_set_up(account)
 
-            # The last synchronization date of the account is used as the lower limit on the orders'
-            # last status update date. The upper limit is determined by the API and returned with
-            # the request response, then saved on the account if the synchronization goes through.
-            last_updated_after = account.last_orders_sync  # Lower limit for pulling orders.
-            status_update_upper_limit = None  # Upper limit of synchronized orders.
+            _logger.info("🔄 Starting order sync for Amazon account ID %s", account.id)
 
-            # Pull all recently updated orders and save the progress during synchronization.
+            last_updated_after = account.last_orders_sync
+            status_update_upper_limit = None
+
             payload = {
                 'LastUpdatedAfter': last_updated_after.isoformat(sep='T'),
                 'MarketplaceIds': ','.join(account.active_marketplace_ids.mapped('api_ref')),
             }
             try:
-                # Orders are pulled in batches of up to 100 orders. If more can be synchronized, the
-                # request results are paginated and the next page holds another batch.
                 has_next_page = True
                 while has_next_page:
-                    # Pull the next batch of orders data.
                     orders_batch_data, has_next_page = amazon_utils.pull_batch_data(
                         account, 'getOrders', payload
                     )
@@ -428,179 +416,152 @@ class AmazonAccount(models.Model):
                         orders_batch_data['LastUpdatedBefore']
                     )
 
-                    # Process the batch one order data at a time.
+                    _logger.info("✅ Retrieved %s orders (next page: %s) for account ID %s",
+                                len(orders_data), has_next_page, account.id)
+
                     for order_data in orders_data:
+                        amazon_order_ref = order_data['AmazonOrderId']
+                        order_status = order_data.get("OrderStatus")
+
+                        # ✅ Always sync shipped orders too
+                        if order_status in ["Canceled"]:  
+                            _logger.info("⏭️ Skipping order %s (status %s) for account ID %s",
+                                        amazon_order_ref, order_status, account.id)
+                            continue  
+
                         try:
                             if auto_commit:
                                 with self.env.cr.savepoint():
                                     account._process_order_data(order_data)
-                            else:  # Avoid the savepoint in testing
+                            else:
                                 account._process_order_data(order_data)
+
+                            last_order_update = dateutil.parser.parse(order_data['LastUpdateDate'])
+                            account.last_orders_sync = last_order_update.replace(tzinfo=None)
+
+                            _logger.info("✔️ Synced order %s (status: %s) for account ID %s",
+                                        amazon_order_ref, order_status, account.id)
+
+                            if auto_commit:
+                                with amazon_utils.preserve_credentials(account):
+                                    self.env.cr.commit()
+
                         except amazon_utils.AmazonRateLimitError:
-                            raise  # Don't treat a rate limit error as a business error.
+                            raise
                         except Exception as error:
-                            amazon_order_ref = order_data['AmazonOrderId']
-                            if isinstance(error, psycopg2.OperationalError) \
-                                and error.pgcode in CONCURRENCY_ERRORS:
-                                _logger.info(
-                                    "A concurrency error occurred while processing the order data "
-                                    "with amazon_order_ref %s for Amazon account with id %s. "
-                                    "Discarding the error to trigger the retry mechanism.",
-                                    amazon_order_ref, account.id
+                            if isinstance(error, psycopg2.OperationalError) and error.pgcode in CONCURRENCY_ERRORS:
+                                _logger.error(
+                                    "⚠️ Concurrency error for order %s (account ID %s). Retrying...",
+                                    amazon_order_ref, account.id, exc_info=True
                                 )
-                                # Let the error bubble up so that either the request can be retried
-                                # up to 5 times or the cron job rollbacks the cursor and reschedules
-                                # itself later, depending on which of the two called this method.
                                 raise
                             else:
-                                _logger.warning(
-                                    "A business error occurred while processing the order data "
-                                    "with amazon_order_ref %s for Amazon account with id %s. "
-                                    "Skipping the order data and moving to the next order.",
-                                    amazon_order_ref, account.id,
+                                _logger.error(
+                                    "❌ Failed to sync order %s (status: %s) for account ID %s. Skipping. Error: %s",
+                                    amazon_order_ref, order_status, account.id, str(error),
                                     exc_info=True
                                 )
-                                # Dismiss business errors to allow the synchronization to skip the
-                                # problematic orders and require synchronizing them manually.
                                 self.env.cr.rollback()
                                 account._handle_sync_failure(
                                     flow='order_sync', amazon_order_ref=amazon_order_ref
                                 )
-                                continue  # Skip these order data and resume with the next ones.
+                                continue
 
-                        # The synchronization of this order went through, use its last status update
-                        # as a backup and set it to be the last synchronization date of the account.
-                        last_order_update = dateutil.parser.parse(order_data['LastUpdateDate'])
-                        account.last_orders_sync = last_order_update.replace(tzinfo=None)
-                        if auto_commit:
-                            with amazon_utils.preserve_credentials(account):
-                                self.env.cr.commit()  # Commit to mitigate an eventual cron kill.
             except amazon_utils.AmazonRateLimitError as error:
-                _logger.info(
-                    "Rate limit reached while synchronizing sales orders for Amazon account with "
-                    "id %s. Operation: %s", account.id, error.operation
+                _logger.warning(
+                    "⏳ Rate limit reached for Amazon account ID %s. Operation: %s. Will retry later.",
+                    account.id, error.operation
                 )
-                continue  # The remaining orders will be pulled later when the cron runs again.
+                continue
+            except Exception as fatal_error:
+                _logger.critical(
+                    "🔥 Fatal error during sync for Amazon account ID %s. Error: %s",
+                    account.id, str(fatal_error), exc_info=True
+                )
+                self.env.cr.rollback()
+                continue
 
-            # There are no more orders to pull and the synchronization went through. Set the API
-            # upper limit on order status update to be the last synchronization date of the account.
-            account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
+            if status_update_upper_limit:
+                account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
 
-    def _sync_order_by_reference(self, amazon_order_ref):
-        """ Synchronize an order based on its Amazon order reference.
+            _logger.info("🏁 Finished order sync for Amazon account ID %s", account.id)
 
-        Note: `self.ensure_one()`
-
-        :param str amazon_order_ref: The amazon reference of the order to re-synchronize.
-        :return: The synchronized Amazon order act window.
-        :rtype: dict
-        :raise UserError: If the order reference is incorrect or the order is not for an active
-                          marketplace.
-        :raise ValidationError: If the order is in a status that prevents its synchronization.
-        """
-        self.ensure_one()
-        amazon_utils.ensure_account_is_set_up(self)
-
-        order_data = amazon_utils.make_sp_api_request(
-            self, 'getOrder', path_parameter=amazon_order_ref
-        )['payload']
-        if not order_data:  # Order not found by Amazon
-            raise UserError(_("The provided reference does not match any Amazon order."))
-        if order_data['MarketplaceId'] not in self.active_marketplace_ids.mapped('api_ref'):
-            raise UserError(_("The order was not found on this account's marketplaces."))
-
-        order = self._process_order_data(order_data)
-        if not order:
-            amazon_status = order_data['OrderStatus']
-            fulfillment_channel = order_data['FulfillmentChannel']
-            raise ValidationError(_(
-                "The Amazon order with reference %(ref)s was not recovered because its status"
-                " (%(status)s) is not eligible for synchronization for its fulfillment channel"
-                " (%(channel)s).",
-                ref=amazon_order_ref,
-                status=amazon_status,
-                channel=fulfillment_channel,
-            ))
-        return {
-            'name': order.display_name,
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'view_mode': 'form',
-            'res_id': order.id,
-        }
 
     def _process_order_data(self, order_data):
-        """ Process the provided order data and return the matching sales order, if any.
-
-        If no matching sales order is found, a new one is created if it is in a 'synchronizable'
-        status: 'Shipped' or 'Unshipped', if it is respectively an FBA or an FBA order. If the
-        matching sales order already exists and the Amazon order was canceled, the sales order is
-        also canceled. If the matching sales order already exists and the order data confirm that a
-        FBM order got shipped, we update the shipping status when it's needed.
-
-        Note: self.ensure_one()
-
-        :param dict order_data: The order data to process.
-        :return: The matching Amazon order, if any, as a `sale.order` record.
-        :rtype: recordset of `sale.order`
-        """
         self.ensure_one()
 
-        # Search for the sales order based on its Amazon order reference.
         amazon_order_ref = order_data['AmazonOrderId']
         order = self.env['sale.order'].search(
             [('amazon_order_ref', '=', amazon_order_ref)], limit=1
         )
         amazon_status = order_data['OrderStatus']
         fulfillment_channel = order_data['FulfillmentChannel']
-        if not order:  # No sales order was found with the given Amazon order reference.
-            if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel]:
-                # Create the sales order and generate stock moves depending on the Amazon channel.
+
+        # ✅ Check if all products exist in Odoo before syncing
+        order_lines = order_data.get('OrderItems', [])
+        missing_products = []
+        for line in order_lines:
+            sku = line.get('SellerSKU')
+            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+            if not product:
+                missing_products.append(sku)
+
+        if missing_products:
+            _logger.warning(
+                "Skipped Amazon order %(ref)s because the following SKUs were not found in Odoo: %(skus)s",
+                {'ref': amazon_order_ref, 'skus': ', '.join(missing_products)}
+            )
+            return False  # 🚫 Do not sync this order if SKUs missing
+
+        if not order:
+            # ✅ Create new order if it doesn’t exist
+            if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
+
                 if order.amazon_channel == 'fba':
+                    # FBA → stock moves generated automatically
                     self._generate_stock_moves(order)
+
                 elif order.amazon_channel == 'fbm':
-                    order.with_context(mail_notrack=True).action_lock()
-                _logger.info(
-                    "Created a new sales order with amazon_order_ref %(ref)s for Amazon account"
-                    " with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
+                    if amazon_status == "Shipped":
+                        # 🚚 Directly lock order (skip reconfirmation)
+                        if order.state in ['draft', 'sent']:
+                            order.with_context(mail_notrack=True).action_confirm()
+                        order.picking_ids.write({'state': 'done', 'amazon_sync_status': 'done'})
+                        _logger.info("📦 Auto-marked FBM order %s pickings as done (Amazon Shipped)", order.name)
+                        order.with_context(mail_notrack=True).action_lock()
+                    else:
+                        if order.state in ['draft', 'sent']:
+                            order.with_context(mail_notrack=True).action_confirm()
+                        order.with_context(mail_notrack=True).action_lock()
+
+                _logger.info("✅ Created new sales order %s (Amazon %s, status %s)",
+                            order.name, amazon_order_ref, amazon_status)
             else:
-                _logger.info(
-                    "Ignored Amazon order with reference %(ref)s and status %(status)s for Amazon"
-                    " account with id %(account_id)s.",
-                    {'ref': amazon_order_ref, 'status': amazon_status, 'account_id': self.id},
-                )
-        else:  # The sales order already exists.
+                _logger.info("⏭️ Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
+
+        else:
+            # ✅ Order already exists
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
-            )  # Consider any "unsynced" status so that we synchronize updates made from Amazon.
+            )
+
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
-                _logger.info(
-                    "Canceled sales order with amazon_order_ref %(ref)s for Amazon account with id"
-                    " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
-            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
-                # This can happen in 3 cases:
-                # 1. The processing of the feed of a batch of pickings failed on Amazon side in a
-                # way that we couldn't tell which picking are faulty. In that case, all pickings of
-                # the batch were flagged as in error. The order status update allows correcting the
-                # status of non-faulty pickings while leaving the faulty ones in error.
-                # 2. The shipping was arranged directly from Amazon's backend.
-                # 3. The user uses a delivery method that contacted Amazon to send the picking
-                # information before we did.
-                unsynced_pickings.amazon_sync_status = 'done'
-                _logger.info(
-                    "Forced the picking synchronization status to 'done' for sales order with"
-                    " Amazon order reference %(ref)s and Amazon account with id %(id)s.",
-                    {'ref': amazon_order_ref, 'id': self.id},
-                )
+                _logger.info("🚫 Canceled order %s", amazon_order_ref)
+
+            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN':
+                # ✅ Do not reconfirm, just mark pickings as done
+                if unsynced_pickings:
+                    unsynced_pickings.write({'state': 'done', 'amazon_sync_status': 'done'})
+                    _logger.info("📦 Marked pickings as done for %s (Amazon Shipped)", amazon_order_ref)
+
+                if order.state not in ['cancel']:
+                    order.with_context(mail_notrack=True).action_lock()
+
             else:
-                _logger.info(
-                    "Ignored already synchronized sales order with amazon_order_ref %(ref)s for"
-                    " Amazon account with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
-                )
+                _logger.info("ℹ️ Order %s already synced (status %s)", amazon_order_ref, amazon_status)
+
         return order
 
     def _create_order_from_data(self, order_data):
@@ -651,29 +612,47 @@ class AmazonAccount(models.Model):
                     'company_id': self.company_id.id,
                 })
 
+        # Build string address for order_address
+        order_address = ", ".join(
+            filter(None, [
+                delivery_partner.name,
+                delivery_partner.street,
+                delivery_partner.street2,
+                delivery_partner.city,
+                delivery_partner.zip,
+                delivery_partner.state_id.name if delivery_partner.state_id else None,
+                delivery_partner.country_id.name if delivery_partner.country_id else None,
+            ])
+        )
+
         order_vals = {
-            'origin': f"Amazon Order {amazon_order_ref}",
-            'state': 'sale',
-            'locked': fulfillment_channel == 'AFN',
-            'date_order': purchase_date,
-        
-            'pricelist_id': self._find_or_create_pricelist(currency).id,
-            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
-            'invoice_status': 'no',
-            'partner_shipping_id': delivery_partner.id,
-            'require_signature': False,
-            'require_payment': False,
-            'fiscal_position_id': fiscal_position.id,
-            'company_id': self.company_id.id,
-            'user_id': self.user_id.id,
-            'team_id': self.team_id.id,
-            'amazon_order_ref': amazon_order_ref,
-            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917,  
-            'order_address':delivery_partner.id,
-            'order_customer':contact_partner,
-           
-        }
+        'origin': f"Amazon Order {amazon_order_ref}",
+        'state': 'sale',
+        'locked': fulfillment_channel == 'AFN',
+        'date_order': purchase_date,
+
+        'pricelist_id': self._find_or_create_pricelist(currency).id,
+        'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
+        'invoice_status': 'no',
+        'partner_shipping_id': delivery_partner.id,
+        'require_signature': False,
+        'require_payment': False,
+        'fiscal_position_id': fiscal_position.id,
+        'company_id': self.company_id.id,
+        'user_id': self.user_id.id,
+        'team_id': self.team_id.id,
+        'amazon_order_ref': amazon_order_ref,
+        'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+        'partner_id': 11917,
+        'purchase_order': amazon_order_ref,
+        'order_address': order_address,
+
+        # ✅ Fixed customer info
+        'order_customer': contact_partner.name if contact_partner else '',
+        'order_phone': contact_partner.phone or contact_partner.mobile or '',
+        'x_studio_zip': contact_partner.zip or '',
+    }
+
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
@@ -975,8 +954,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':'test sku',
-            'product_template_id':'[LMSS1836BG]',
+            'barcode_scan':kwargs.get('skus'),  
+            'product_template_id':kwargs.get('skus'),
         }
 
 
