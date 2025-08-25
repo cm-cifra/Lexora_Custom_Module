@@ -423,15 +423,11 @@ class AmazonAccount(models.Model):
                         amazon_order_ref = order_data['AmazonOrderId']
                         order_status = order_data.get("OrderStatus")
 
-                        # ✅ Always sync shipped orders and include canceled orders if needed
-                        if order_status in ["Canceled"]:
+                        # ✅ Always sync shipped orders too
+                        if order_status in ["Canceled"]:  
                             _logger.info("⏭️ Skipping order %s (status %s) for account ID %s",
                                         amazon_order_ref, order_status, account.id)
-                            continue
-
-                        # Additional condition: process shipped orders if you want to ensure they are synced
-                        # For example, to process all orders regardless of status, remove the above if-check
-                        # or modify it accordingly.
+                            continue  
 
                         try:
                             if auto_commit:
@@ -489,6 +485,7 @@ class AmazonAccount(models.Model):
                 account.last_orders_sync = status_update_upper_limit.replace(tzinfo=None)
 
             _logger.info("🏁 Finished order sync for Amazon account ID %s", account.id)
+
 
     def _process_order_data(self, order_data):
         self.ensure_one()
@@ -646,7 +643,8 @@ class AmazonAccount(models.Model):
             'team_id': self.team_id.id,
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-            'partner_id':11917,  
+            'partner_id':11917, 
+            'purchase_order':amazon_order_ref,
             'order_address':order_address, 
             'order_customer': contact_partner.name or contact_partner   or '',
             'order_phone': contact_partner.phone or contact_partner.mobile or '',
@@ -797,11 +795,8 @@ class AmazonAccount(models.Model):
                 lambda m: m.api_ref == marketplace_api_ref
             )
 
-            # Offer
+            # Offer (amazon.offer record)
             offer = self._find_or_create_offer(sku, marketplace)
-            if not offer:
-                # Skip this item if no offer/product found
-                continue
 
             # Reset invalid feed ref if needed
             if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
@@ -825,11 +820,7 @@ class AmazonAccount(models.Model):
                 product_id = product.id
             else:
                 # fallback to product linked on offer
-                product_id = offer.product_id.id if offer and offer.product_id else False
-
-            if not product_id:
-                # If still no product, skip this line
-                continue
+                product_id = offer.product_id.id
 
             # Taxes
             product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
@@ -873,7 +864,7 @@ class AmazonAccount(models.Model):
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
-                amazon_offer_id=offer.id if offer else False,
+                amazon_offer_id=offer.id,
                 skus=sku,
             ))
 
@@ -884,25 +875,24 @@ class AmazonAccount(models.Model):
                 gift_wrap_price = float(item_gift_info.get('GiftWrapPrice', {}).get('Amount', '0'))
                 if gift_wrap_code and gift_wrap_price != 0:
                     gift_wrap_product = self._find_matching_product(
-                        gift_wrap_code, 'default_product', 'Amazon Sales', 'consu', fallback=False
+                        gift_wrap_code, 'default_product', 'Amazon Sales', 'consu'
                     )
-                    if gift_wrap_product:
-                        gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
-                            [*self.env['account.tax']._check_company_domain(self.company_id)]
-                        )
-                        gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) if fiscal_pos else gift_wrap_product_taxes
-                        gift_wrap_tax_amount = float(item_gift_info.get('GiftWrapTax', {}).get('Amount', '0'))
-                        original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount if marketplace.tax_included else gift_wrap_price
-                        gift_wrap_subtotal = self._recompute_subtotal(
-                            original_gift_wrap_subtotal, gift_wrap_tax_amount, gift_wrap_taxes, currency, fiscal_pos
-                        )
-                        order_lines_values.append(self._convert_to_order_line_values(
-                            item_data=item_data,
-                            product_id=gift_wrap_product.id,
-                            description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name if offer and offer.product_id else sku),
-                            subtotal=gift_wrap_subtotal,
-                            tax_ids=gift_wrap_taxes.ids,
-                        ))
+                    gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
+                        [*self.env['account.tax']._check_company_domain(self.company_id)]
+                    )
+                    gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) if fiscal_pos else gift_wrap_product_taxes
+                    gift_wrap_tax_amount = float(item_gift_info.get('GiftWrapTax', {}).get('Amount', '0'))
+                    original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount if marketplace.tax_included else gift_wrap_price
+                    gift_wrap_subtotal = self._recompute_subtotal(
+                        original_gift_wrap_subtotal, gift_wrap_tax_amount, gift_wrap_taxes, currency, fiscal_pos
+                    )
+                    order_lines_values.append(self._convert_to_order_line_values(
+                        item_data=item_data,
+                        product_id=gift_wrap_product.id,
+                        description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name),
+                        subtotal=gift_wrap_subtotal,
+                        tax_ids=gift_wrap_taxes.ids,
+                    ))
                 gift_message = item_gift_info.get('GiftMessageText')
                 if gift_message:
                     order_lines_values.append(self._convert_to_order_line_values(
@@ -935,7 +925,7 @@ class AmazonAccount(models.Model):
                 order_lines_values.append(self._convert_to_order_line_values(
                     item_data=item_data,
                     product_id=shipping_product.id,
-                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name if offer and offer.product_id else sku),
+                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name),
                     subtotal=shipping_subtotal,
                     tax_ids=shipping_taxes.ids,
                     discount=ship_discount_subtotal,
@@ -969,25 +959,33 @@ class AmazonAccount(models.Model):
 
 
     def _find_or_create_offer(self, sku, marketplace):
+        """ Find or create the amazon offer based on the SKU and marketplace.
+
+        Note: self.ensure_one()
+
+        :param str sku: The SKU of the product.
+        :param recordset marketplace: The marketplace of the offer, as an `amazon.marketplace`
+               record.
+        :return: The amazon offer.
+        :rtype: record or `amazon.offer`
+        """
         self.ensure_one()
 
         offer = self.offer_ids.filtered(lambda o: o.sku == sku)
         if not offer:
-            product = self._find_matching_product(sku, '', '', '', fallback=False)
-            if not product:
-                # Option 1: Skip creating the offer if no matching product
-                return False
-                # Option 2: Raise an error to notify admin
-                # raise UserError(_("No product found with SKU %s") % sku)
-
             offer = self.env['amazon.offer'].with_context(tracking_disable=True).create({
                 'account_id': self.id,
                 'marketplace_id': marketplace.id,
-                'product_id': product.id,
+                'product_id': self._find_matching_product(
+                    sku, 'default_product', 'Amazon Sales', 'consu'
+                ).id,
                 'sku': sku,
                 'amazon_feed_ref': '{}',
             })
-
+        # If the offer has been linked with the default product, search if another product has now
+        # been assigned the current SKU as internal reference and update the offer if so.
+        # This trades off a bit of performance in exchange for a more expected behavior for the
+        # matching of products if one was assigned the right SKU after that the offer was created.
         elif 'sale_amazon.default_product' in offer.product_id._get_external_ids().get(
             offer.product_id.id, []
         ):
@@ -995,7 +993,6 @@ class AmazonAccount(models.Model):
             if product:
                 offer.product_id = product.id
         return offer
-
 
     def _find_or_create_pricelist(self, currency):
         """ Find or create the pricelist based on the currency.
@@ -1023,18 +1020,32 @@ class AmazonAccount(models.Model):
     def _find_matching_product(
         self, internal_reference, default_xmlid, default_name, default_type, fallback=True
     ):
-        """
-        Find an existing product by internal reference (default_code).
-        Will NOT create a new product if not found.
+        """ Find the matching product for a given internal reference.
+
+        If no product is found for the given internal reference, we fall back on the default
+        product. If the default product was deleted, we restore it.
+
+        :param str internal_reference: The internal reference of the product to be searched.
+        :param str default_xmlid: The xmlid of the default product to use as fallback.
+        :param str default_name: The name of the default product to use as fallback.
+        :param str default_type: The product type of the default product to use as fallback.
+        :param bool fallback: Whether we should fall back to the default product when no product
+                              matching the provided internal reference is found.
+        :return: The matching product.
+        :rtype: record of `product.product`
         """
         self.ensure_one()
         product = self.env['product.product'].search([
             *self.env['product.product']._check_company_domain(self.company_id),
             ('default_code', '=', internal_reference),
         ], limit=1)
-
-        # Do not create a fallback product anymore
-        return product or False
+        if not product and fallback:  # Fallback to the default product
+            product = self.env.ref('sale_amazon.%s' % default_xmlid, raise_if_not_found=False)
+        if not product and fallback:  # Restore the default product if it was deleted
+            product = self.env['product.product']._restore_data_product(
+                default_name, default_type, default_xmlid
+            )
+        return product
 
     def _recompute_subtotal(self, subtotal, tax_amount, taxes, currency, _fiscal_pos=None):
         """ Recompute the subtotal from the tax amount and the taxes.
