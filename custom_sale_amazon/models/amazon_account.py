@@ -984,7 +984,7 @@ class AmazonAccount(models.Model):
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
             'barcode_scan':kwargs.get('skus'),
-            'product_template_id': kwargs.get('skus'),
+            'product_template_id': 'BMVBS80DE000',
         }
 
 
