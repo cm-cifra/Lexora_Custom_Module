@@ -644,9 +644,10 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917,  
-            'order_address':order_address,
-              'order_customer': contact_partner.name if contact_partner else '',  # ✅ fixed
-             
+            'order_address':order_address, 
+            'order_customer': contact_partner.name or contact_partner   or '',
+            'order_phone': contact_partner.phone or contact_partner.mobile or '',
+            'x_studio_zip': contact_partner.zip or '',
            
         }
 
@@ -1023,7 +1024,6 @@ class AmazonAccount(models.Model):
 
         # Do not create a fallback product anymore
         return product or False
-
 
     def _recompute_subtotal(self, subtotal, tax_amount, taxes, currency, _fiscal_pos=None):
         """ Recompute the subtotal from the tax amount and the taxes.
