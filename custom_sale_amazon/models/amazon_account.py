@@ -511,58 +511,72 @@ class AmazonAccount(models.Model):
                 "Skipped Amazon order %(ref)s because the following SKUs were not found in Odoo: %(skus)s",
                 {'ref': amazon_order_ref, 'skus': ', '.join(missing_products)}
             )
-            return False  # 🚫 Do not sync this order if SKUs missing
+            return False  # 🚫 Do not sync this order
 
-        if not order:
-            # ✅ Create new order if it doesn’t exist
+        if not order:  # No sales order exists yet
             if amazon_status in const.STATUS_TO_SYNCHRONIZE[fulfillment_channel] or amazon_status == "Shipped":
                 order = self._create_order_from_data(order_data)
 
+                # Handle fulfillment channel
                 if order.amazon_channel == 'fba':
-                    # FBA → stock moves generated automatically
                     self._generate_stock_moves(order)
-
                 elif order.amazon_channel == 'fbm':
-                    if amazon_status == "Shipped":
-                        # 🚚 Directly lock order (skip reconfirmation)
-                        if order.state in ['draft', 'sent']:
-                            order.with_context(mail_notrack=True).action_confirm()
-                        order.picking_ids.write({'state': 'done', 'amazon_sync_status': 'done'})
-                        _logger.info("📦 Auto-marked FBM order %s pickings as done (Amazon Shipped)", order.name)
-                        order.with_context(mail_notrack=True).action_lock()
-                    else:
-                        if order.state in ['draft', 'sent']:
-                            order.with_context(mail_notrack=True).action_confirm()
-                        order.with_context(mail_notrack=True).action_lock()
+                    order.with_context(mail_notrack=True).action_lock()
 
-                _logger.info("✅ Created new sales order %s (Amazon %s, status %s)",
-                            order.name, amazon_order_ref, amazon_status)
+                # ✅ If shipped, mark as confirmed + lock it
+                if amazon_status == "Shipped":
+                    order.action_confirm()
+                    order.action_lock()
+                    for picking in order.picking_ids:
+                        if picking.state not in ["done", "cancel"]:
+                            picking.action_assign()
+                            for move in picking.move_ids:
+                                move.quantity_done = move.product_uom_qty
+                            picking.button_validate()
+                    _logger.info(
+                        "Created and marked order %(ref)s as Shipped for Amazon account %(id)s.",
+                        {'ref': amazon_order_ref, 'id': self.id}
+                    )
+                else:
+                    _logger.info(
+                        "Created a new sales order with amazon_order_ref %(ref)s for Amazon account"
+                        " with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
+                    )
             else:
-                _logger.info("⏭️ Ignored Amazon order %s (status %s)", amazon_order_ref, amazon_status)
-
-        else:
-            # ✅ Order already exists
+                _logger.info(
+                    "Ignored Amazon order with reference %(ref)s and status %(status)s for Amazon"
+                    " account with id %(account_id)s.",
+                    {'ref': amazon_order_ref, 'status': amazon_status, 'account_id': self.id},
+                )
+        else:  # Order already exists
             unsynced_pickings = order.picking_ids.filtered(
                 lambda picking: picking.amazon_sync_status != 'done' and picking.state != 'cancel'
             )
-
             if amazon_status == 'Canceled' and order.state != 'cancel':
                 order._action_cancel()
-                _logger.info("🚫 Canceled order %s", amazon_order_ref)
-
-            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN':
-                # ✅ Do not reconfirm, just mark pickings as done
-                if unsynced_pickings:
-                    unsynced_pickings.write({'state': 'done', 'amazon_sync_status': 'done'})
-                    _logger.info("📦 Marked pickings as done for %s (Amazon Shipped)", amazon_order_ref)
-
-                if order.state not in ['cancel']:
-                    order.with_context(mail_notrack=True).action_lock()
-
+                _logger.info(
+                    "Canceled sales order with amazon_order_ref %(ref)s for Amazon account with id"
+                    " %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
+                )
+            elif amazon_status == 'Shipped' and fulfillment_channel == 'MFN' and unsynced_pickings:
+                unsynced_pickings.amazon_sync_status = 'done'
+                for picking in unsynced_pickings:
+                    if picking.state not in ["done", "cancel"]:
+                        picking.action_assign()
+                        for move in picking.move_ids:
+                            move.quantity_done = move.product_uom_qty
+                        picking.button_validate()
+                _logger.info(
+                    "Updated existing order %(ref)s to Shipped for Amazon account with id %(id)s.",
+                    {'ref': amazon_order_ref, 'id': self.id},
+                )
             else:
-                _logger.info("ℹ️ Order %s already synced (status %s)", amazon_order_ref, amazon_status)
-
+                _logger.info(
+                    "Ignored already synchronized sales order with amazon_order_ref %(ref)s for"
+                    " Amazon account with id %(id)s.", {'ref': amazon_order_ref, 'id': self.id}
+                )
         return order
+
 
     def _create_order_from_data(self, order_data):
         self.ensure_one()
@@ -626,32 +640,29 @@ class AmazonAccount(models.Model):
         )
 
         order_vals = {
-        'origin': f"Amazon Order {amazon_order_ref}",
-        'state': 'sale',
-        'locked': fulfillment_channel == 'AFN',
-        'date_order': purchase_date,
-
-        'pricelist_id': self._find_or_create_pricelist(currency).id,
-        'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
-        'invoice_status': 'no',
-        'partner_shipping_id': delivery_partner.id,
-        'require_signature': False,
-        'require_payment': False,
-        'fiscal_position_id': fiscal_position.id,
-        'company_id': self.company_id.id,
-        'user_id': self.user_id.id,
-        'team_id': self.team_id.id,
-        'amazon_order_ref': amazon_order_ref,
-        'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-        'partner_id': 11917, 
-        'order_address': order_address,
-
-        # ✅ Fixed customer info
-        'order_customer': contact_partner.name if contact_partner else '',
-        'order_phone': contact_partner.phone or contact_partner.mobile or '',
-        'x_studio_zip': contact_partner.zip or '',
-    }
-
+            'origin': f"Amazon Order {amazon_order_ref}",
+            'state': 'sale',
+            'locked': fulfillment_channel == 'AFN',
+            'date_order': purchase_date,
+        
+            'pricelist_id': self._find_or_create_pricelist(currency).id,
+            'order_line': [(0, 0, line_vals) for line_vals in order_lines_values],
+            'invoice_status': 'no',
+            'partner_shipping_id': delivery_partner.id,
+            'require_signature': False,
+            'require_payment': False,
+            'fiscal_position_id': fiscal_position.id,
+            'company_id': self.company_id.id,
+            'user_id': self.user_id.id,
+            'team_id': self.team_id.id,
+            'amazon_order_ref': amazon_order_ref,
+            'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
+            'partner_id':11917,  
+            'order_address':order_address,
+            'order_customer':contact_partner,
+             
+           
+        }
 
         if fulfillment_channel == 'AFN' and self.location_id.warehouse_id:
             order_vals['warehouse_id'] = self.location_id.warehouse_id.id
@@ -953,8 +964,8 @@ class AmazonAccount(models.Model):
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
             'amazon_offer_id': kwargs.get('amazon_offer_id'),
-            'barcode_scan':kwargs.get('skus'),  
-            'product_template_id':kwargs.get('skus'),
+            'barcode_scan':kwargs.get('skus'),
+            'product_template_id': kwargs.get('skus'),
         }
 
 
