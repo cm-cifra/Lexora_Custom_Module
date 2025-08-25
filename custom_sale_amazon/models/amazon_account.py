@@ -643,8 +643,7 @@ class AmazonAccount(models.Model):
         'team_id': self.team_id.id,
         'amazon_order_ref': amazon_order_ref,
         'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
-        'partner_id': 11917,
-        'purchase_order': amazon_order_ref,
+        'partner_id': 11917, 
         'order_address': order_address,
 
         # ✅ Fixed customer info
