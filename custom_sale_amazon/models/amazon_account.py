@@ -644,10 +644,9 @@ class AmazonAccount(models.Model):
             'amazon_order_ref': amazon_order_ref,
             'amazon_channel': 'fba' if fulfillment_channel == 'AFN' else 'fbm',
             'partner_id':11917,  
-            'order_address':order_address, 
-            'order_customer': contact_partner.name or contact_partner   or '',
-            'order_phone': contact_partner.phone or contact_partner.mobile or '',
-            'x_studio_zip': contact_partner.zip or '',
+            'order_address':order_address,
+              'order_customer': contact_partner.name if contact_partner else '',  # ✅ fixed
+             
            
         }
 
