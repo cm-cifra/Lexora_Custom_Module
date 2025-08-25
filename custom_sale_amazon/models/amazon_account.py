@@ -794,8 +794,11 @@ class AmazonAccount(models.Model):
                 lambda m: m.api_ref == marketplace_api_ref
             )
 
-            # Offer (amazon.offer record)
+            # Offer
             offer = self._find_or_create_offer(sku, marketplace)
+            if not offer:
+                # Skip this item if no offer/product found
+                continue
 
             # Reset invalid feed ref if needed
             if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
@@ -819,7 +822,11 @@ class AmazonAccount(models.Model):
                 product_id = product.id
             else:
                 # fallback to product linked on offer
-                product_id = offer.product_id.id
+                product_id = offer.product_id.id if offer and offer.product_id else False
+
+            if not product_id:
+                # If still no product, skip this line
+                continue
 
             # Taxes
             product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
@@ -863,7 +870,7 @@ class AmazonAccount(models.Model):
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
-                amazon_offer_id=offer.id,
+                amazon_offer_id=offer.id if offer else False,
                 skus=sku,
             ))
 
@@ -874,24 +881,25 @@ class AmazonAccount(models.Model):
                 gift_wrap_price = float(item_gift_info.get('GiftWrapPrice', {}).get('Amount', '0'))
                 if gift_wrap_code and gift_wrap_price != 0:
                     gift_wrap_product = self._find_matching_product(
-                        gift_wrap_code, 'default_product', 'Amazon Sales', 'consu'
+                        gift_wrap_code, 'default_product', 'Amazon Sales', 'consu', fallback=False
                     )
-                    gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
-                        [*self.env['account.tax']._check_company_domain(self.company_id)]
-                    )
-                    gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) if fiscal_pos else gift_wrap_product_taxes
-                    gift_wrap_tax_amount = float(item_gift_info.get('GiftWrapTax', {}).get('Amount', '0'))
-                    original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount if marketplace.tax_included else gift_wrap_price
-                    gift_wrap_subtotal = self._recompute_subtotal(
-                        original_gift_wrap_subtotal, gift_wrap_tax_amount, gift_wrap_taxes, currency, fiscal_pos
-                    )
-                    order_lines_values.append(self._convert_to_order_line_values(
-                        item_data=item_data,
-                        product_id=gift_wrap_product.id,
-                        description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name),
-                        subtotal=gift_wrap_subtotal,
-                        tax_ids=gift_wrap_taxes.ids,
-                    ))
+                    if gift_wrap_product:
+                        gift_wrap_product_taxes = gift_wrap_product.taxes_id.filtered_domain(
+                            [*self.env['account.tax']._check_company_domain(self.company_id)]
+                        )
+                        gift_wrap_taxes = fiscal_pos.map_tax(gift_wrap_product_taxes) if fiscal_pos else gift_wrap_product_taxes
+                        gift_wrap_tax_amount = float(item_gift_info.get('GiftWrapTax', {}).get('Amount', '0'))
+                        original_gift_wrap_subtotal = gift_wrap_price - gift_wrap_tax_amount if marketplace.tax_included else gift_wrap_price
+                        gift_wrap_subtotal = self._recompute_subtotal(
+                            original_gift_wrap_subtotal, gift_wrap_tax_amount, gift_wrap_taxes, currency, fiscal_pos
+                        )
+                        order_lines_values.append(self._convert_to_order_line_values(
+                            item_data=item_data,
+                            product_id=gift_wrap_product.id,
+                            description=_("[%s] Gift Wrapping Charges for %s", gift_wrap_code, offer.product_id.name if offer and offer.product_id else sku),
+                            subtotal=gift_wrap_subtotal,
+                            tax_ids=gift_wrap_taxes.ids,
+                        ))
                 gift_message = item_gift_info.get('GiftMessageText')
                 if gift_message:
                     order_lines_values.append(self._convert_to_order_line_values(
@@ -924,7 +932,7 @@ class AmazonAccount(models.Model):
                 order_lines_values.append(self._convert_to_order_line_values(
                     item_data=item_data,
                     product_id=shipping_product.id,
-                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name),
+                    description=_("[%s] Delivery Charges for %s", shipping_code, offer.product_id.name if offer and offer.product_id else sku),
                     subtotal=shipping_subtotal,
                     tax_ids=shipping_taxes.ids,
                     discount=ship_discount_subtotal,
