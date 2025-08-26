@@ -787,23 +787,50 @@ class AmazonAccount(models.Model):
         order_lines_values = []
 
         for item_data in items_data:
-            sku = item_data['SellerSKU']  # Amazon SKU
+            # Amazon SKU
+            sku = item_data['SellerSKU']
 
-            # --- Find matching product.product in Odoo ---
+            # Marketplace
+            marketplace = self.active_marketplace_ids.filtered(
+                lambda m: m.api_ref == marketplace_api_ref
+            )
+
+            # Offer
+            offer = self._find_or_create_offer(sku, marketplace)
+            if not offer:
+                continue
+
+            # Reset invalid feed ref if needed
+            if offer.amazon_feed_ref and offer.amazon_feed_ref != '{}':
+                try:
+                    feed_data = json.loads(offer.amazon_feed_ref)
+                except json.JSONDecodeError:
+                    feed_data = None
+                offer_fulfill_channel = None
+                if isinstance(feed_data, dict):
+                    offer_fulfill_channel = 'MFN' if feed_data.get('is_fbm') else 'AFN'
+                if order_fulfillment_channel != offer_fulfill_channel:
+                    offer.update({'amazon_feed_ref': '{}', 'amazon_sync_status': False})
+
+            # --- Find product.product by SKU ---
             product = self.env['product.product'].search([
                 ('default_code', '=', sku),
                 *self.env['product.product']._check_company_domain(self.company_id),
             ], limit=1)
 
-            if not product:
-                # no match → skip
+            if product:
+                product_id = product.id
+                product_template_id = product.product_tmpl_id.id
+            else:
+                # fallback to product linked on offer
+                product_id = offer.product_id.id if offer and offer.product_id else False
+                product_template_id = offer.product_id.product_tmpl_id.id if offer and offer.product_id else False
+
+            if not product_id:
                 continue
 
-            product_id = product.id
-            product_template_id = product.product_tmpl_id.id
-
             # Taxes
-            product_taxes = product.taxes_id.filtered_domain(
+            product_taxes = self.env['product.product'].browse(product_id).taxes_id.filtered_domain(
                 [*self.env['account.tax']._check_company_domain(self.company_id)]
             )
             taxes = fiscal_pos.map_tax(product_taxes) if fiscal_pos else product_taxes
@@ -821,37 +848,35 @@ class AmazonAccount(models.Model):
             # Prices
             sales_price = float(item_data.get('ItemPrice', {}).get('Amount', 0.0))
             tax_amount = float(item_data.get('ItemTax', {}).get('Amount', 0.0))
-            original_subtotal = sales_price - tax_amount if self.active_marketplace_ids.filtered(
-                lambda m: m.api_ref == marketplace_api_ref
-            ).tax_included else sales_price
+            original_subtotal = sales_price - tax_amount if marketplace.tax_included else sales_price
             subtotal = self._recompute_subtotal(original_subtotal, tax_amount, taxes, currency, fiscal_pos)
 
-            # Discounts
+            # Promo discounts
             promo_discount = float(item_data.get('PromotionDiscount', {}).get('Amount', '0'))
             promo_disc_tax = float(item_data.get('PromotionDiscountTax', {}).get('Amount', '0'))
-            original_promo_discount_subtotal = promo_discount - promo_disc_tax if self.active_marketplace_ids.filtered(
-                lambda m: m.api_ref == marketplace_api_ref
-            ).tax_included else promo_discount
+            original_promo_discount_subtotal = promo_discount - promo_disc_tax if marketplace.tax_included else promo_discount
             promo_discount_subtotal = self._recompute_subtotal(
                 original_promo_discount_subtotal, promo_disc_tax, taxes, currency, fiscal_pos
             )
 
             amazon_item_ref = item_data['OrderItemId']
 
-            # --- Add product line ---
+            # --- Product Line ---
             order_lines_values.append(self._convert_to_order_line_values(
                 item_data=item_data,
-                product_id=product_id,
-                product_template_id=product_template_id,   # ✅ set template id
+                product_id=product_id,                   # ✅ product (for display)
+                product_template_id=product_template_id, # ✅ template (custom field)
                 description=description,
                 subtotal=subtotal,
                 tax_ids=taxes.ids,
                 quantity=item_data['QuantityOrdered'],
                 discount=promo_discount_subtotal,
                 amazon_item_ref=amazon_item_ref,
+                amazon_offer_id=offer.id if offer else False,
                 skus=sku,
             ))
 
+            # Gift wrap + shipping lines remain same...
         return order_lines_values
 
 
@@ -861,17 +886,17 @@ class AmazonAccount(models.Model):
         quantity = kwargs.get('quantity', 1)
         return {
             'name': kwargs.get('description', ''),
-            'product_id': kwargs.get('product_id'),              # product variant
-            'product_template_id': kwargs.get('product_template_id') or False,  # template
+            'product_id': kwargs.get('product_id'),   # 👈 required for product to display
+            'product_template_id': kwargs.get('product_template_id') or False,  # 👈 works if custom field exists
             'price_unit': subtotal / quantity if quantity else 0,
             'tax_id': [(6, 0, kwargs.get('tax_ids', []))],
             'product_uom_qty': quantity,
             'discount': (kwargs.get('discount', 0) / subtotal) * 100 if subtotal else 0,
             'display_type': kwargs.get('display_type', False),
             'amazon_item_ref': kwargs.get('amazon_item_ref'),
+            'amazon_offer_id': kwargs.get('amazon_offer_id'),
             'barcode_scan': kwargs.get('skus'),
         }
-
 
 
     def _find_or_create_offer(self, sku, marketplace):
