@@ -6,6 +6,7 @@
     "data": [
         "views/helpdesk_ticket_views.xml",
     ],
+    "license": "LGPL-3",
     "installable": True,
     "application": False,
 }
