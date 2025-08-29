@@ -1,0 +1,27 @@
+<odoo>
+    <!-- Inherit the Helpdesk Ticket form view. If this ref differs in your DB/version,
+         replace 'helpdesk.helpdesk_ticket_view_form' with the correct external ID. -->
+    <record id="charge_status_helpdesk_ticket_view_form_inherit" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.charge.status.confirm.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add buttons in the form header so they are always visible -->
+            <xpath expr="//form/header" position="inside">
+                <!-- Show when NOT already disputed -->
+                <button name="action_open_dispute_confirm_wizard"
+                        type="object"
+                        string="Mark as Disputed"
+                        class="btn-primary"
+                        attrs="{'invisible': [('x_studio_charge_status', '=', 'Disputed')]}"/>
+
+                <!-- Optional helper: show when already disputed -->
+                <button name="action_unset_disputed"
+                        type="object"
+                        string="Clear Disputed"
+                        class="btn-secondary"
+                        attrs="{'invisible': [('x_studio_charge_status', '!=', 'Disputed')]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
