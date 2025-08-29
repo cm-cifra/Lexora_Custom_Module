@@ -1,0 +1,14 @@
+<odoo>    <!-- Inherit Helpdesk Ticket form -->
+    <record id="charge_status_helpdesk_ticket_view_form_inherit" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.charge.status.confirm.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">                <!-- Button: Show only if NOT already disputed -->
+                <button name="action_open_dispute_confirm_wizard" type="object" string="Mark as Disputed" class="btn-primary" modifiers="{'invisible': [['x_studio_charge_status', '=', 'Disputed']]}"/>
+                <!-- Button: Show only if already disputed -->
+                <button name="action_unset_disputed" type="object" string="Clear Disputed" class="btn-secondary" modifiers="{'invisible': [['x_studio_charge_status', '!=', 'Disputed']]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
