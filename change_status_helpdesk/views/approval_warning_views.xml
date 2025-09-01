@@ -1,15 +1,16 @@
 <odoo>
-    <record id="view_helpdesk_ticket_form_inherit_status_popup" model="ir.ui.view">
-        <field name="name">helpdesk.ticket.form.charge_status_popup</field>
-        <field name="model">helpdesk.ticket</field>
-        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+    <record id="view_helpdesk_approval_warning_form" model="ir.ui.view">
+        <field name="name">helpdesk.approval.warning.form</field>
+        <field name="model">helpdesk.approval.warning</field>
         <field name="arch" type="xml">
-            <xpath expr="//header" position="inside">
-                <button name="action_check_charge_status"
-                        type="object"
-                        string="Check Charge Status"
-                        class="oe_highlight"/>
-            </xpath>
+            <form string="Approval Warning">
+                <group>
+                    <field name="message" nolabel="1" readonly="1"/>
+                </group>
+                <footer>
+                    <button string="Ok" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
         </field>
     </record>
 </odoo>
