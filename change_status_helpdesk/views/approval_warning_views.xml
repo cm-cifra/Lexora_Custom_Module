@@ -1,0 +1,16 @@
+<odoo>
+    <record id="view_helpdesk_approval_warning_form" model="ir.ui.view">
+        <field name="name">helpdesk.approval.warning.form</field>
+        <field name="model">helpdesk.approval.warning</field>
+        <field name="arch" type="xml">
+            <form string="Approval Warning">
+                <group>
+                    <field name="message" nolabel="1" readonly="1"/>
+                </group>
+                <footer>
+                    <button string="Ok" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
