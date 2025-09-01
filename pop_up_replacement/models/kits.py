@@ -13,4 +13,3 @@ class HelpdeskTicket(models.Model):
                     'message': "This ticket is tagged with 'Replacement'. and Po# must contain "-R" to identify as replacement Please review carefully.",
                 }
             }
-
