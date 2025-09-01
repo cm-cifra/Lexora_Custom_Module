@@ -6,7 +6,7 @@
         This module displays a popup warning whenever a Helpdesk Ticket 
         has a tag containing the word 'Replacement'.
     """,
-    'author': 'chris mark cifra',
+    'author': 'Chris Mark Cifra',
     'depends': ['helpdesk'],
     'data': [],
     'installable': True,
