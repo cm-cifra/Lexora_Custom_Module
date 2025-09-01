@@ -11,6 +11,7 @@ class HelpdeskTicket(models.Model):
             return {
                 'warning': {
                     'title': _("Information"),
-                    'message': _("⚠️ The charge status has been set to Approved!"),
+                    'message': _("⚠️ Changing the status to Approved will create an Accessorial Charge and generate a Vendor Bill."),
                 }
             }
+
