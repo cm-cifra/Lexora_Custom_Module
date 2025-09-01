@@ -1,13 +1,11 @@
 {
-    'name': 'Helpdesk Charge Status Popup',
-    'version': '1.0',
-    'category': 'Helpdesk',
-    'summary': 'Show popup when charge status is approved',
-    'depends': ['helpdesk'],
-    'data': [
-        'views/approval_warning_views.xml',
-        'views/helpdesk_ticket_views.xml',
+    "name": "Helpdesk Ticket Charge Status Warning",
+    "version": "1.0",
+    "author": "chris mark cifra",
+    "depends": ["helpdesk"],
+    "data": [
+        "views/helpdesk_ticket_views.xml",
+        "views/approval_warning_views.xml",
     ],
-    'installable': True,
-    'application': False,
+    "installable": True,
 }

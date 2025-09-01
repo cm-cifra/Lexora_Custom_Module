@@ -7,9 +7,6 @@
                 <group>
                     <field name="message" nolabel="1" readonly="1"/>
                 </group>
-                <footer>
-                    <button string="Ok" class="btn-primary" special="cancel"/>
-                </footer>
             </form>
         </field>
     </record>
