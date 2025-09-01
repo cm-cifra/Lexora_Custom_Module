@@ -1,5 +1,5 @@
 {
-    'name': 'Helpdesk Charge Status Popup',
+    'name': 'Helpdesk Charge Status Popup chris',
     'version': '1.0',
     'category': 'Helpdesk',
     'summary': 'Show popup when charge status is approved',
