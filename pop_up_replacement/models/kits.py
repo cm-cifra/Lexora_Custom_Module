@@ -10,6 +10,7 @@ class HelpdeskTicket(models.Model):
             return {
                 'warning': {
                     'title': "Replacement Tag Selected",
-                    'message': "This ticket is tagged with 'Replacement'. Please review carefully.",
+                    'message': "This ticket is tagged with 'Replacement'. and Po# must contain "-R" to identify as replacement Please review carefully.",
                 }
             }
+
