@@ -1,6 +1,6 @@
 {
     'name': 'Helpdesk Replacement Warning',
-    'version': '1.1',
+    'version': '2.1',
     'summary': 'Show popup warning when Replacement tag is set on Helpdesk Ticket',
     'description': """
         This module displays a popup warning whenever a Helpdesk Ticket 
