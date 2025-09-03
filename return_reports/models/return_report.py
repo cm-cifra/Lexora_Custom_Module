@@ -5,7 +5,7 @@ class ReturnReport(models.Model):
     _name = 'return.report'
     _description = 'Return Report'
 
-    # Unique ID will be automatically handled by Odoo as `id`
+    # Unique ID handled automatically by Odoo as `id`
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     partner_id = fields.Many2one('res.partner', string="Customer")
@@ -17,7 +17,7 @@ class ReturnReport(models.Model):
         ('damaged', 'Damaged')
     ], string="Condition", default='good')
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
-    shipped_date = fields.Date(string="Shipped Date", related="po_id.date_approve", store=True, readonly=True)
+    shipped_date = fields.Datetime(string="Shipped Date", related="po_id.date_approve", store=True, readonly=True)
     note = fields.Text(string="Notes")
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
 

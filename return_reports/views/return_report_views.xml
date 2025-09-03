@@ -38,7 +38,6 @@
                 </header>
                 <sheet>
                     <group>
-                        <field name="id" readonly="1"/>
                         <field name="date"/>
                         <field name="partner_id"/>
                         <field name="merchant_id"/>
