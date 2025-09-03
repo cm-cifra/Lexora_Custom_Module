@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 class ReturnReport(models.Model):
     _name = 'return.report'
@@ -23,9 +23,9 @@ class ReturnReport(models.Model):
 
     shipped_date = fields.Datetime(
         string="Shipped Date",
-        related="po_id.x_studio_date_shipped",
+        compute="_compute_shipped_date",
         store=True,
-        readonly=True,
+        readonly=False,
     )
 
     note = fields.Text(string="Notes")
@@ -36,6 +36,11 @@ class ReturnReport(models.Model):
         ('confirmed', 'Confirmed'),
         ('done', 'Done')
     ], string="Status", default='draft', tracking=True)
+
+    @api.depends('po_id')
+    def _compute_shipped_date(self):
+        for rec in self:
+            rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
     def action_confirm(self):
         for rec in self:
