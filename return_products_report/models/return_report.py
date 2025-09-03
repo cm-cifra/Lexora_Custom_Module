@@ -11,21 +11,26 @@ class SaleCustomRecord(models.Model):
     )
 
     order_line_id = fields.Many2one(
-        "sale.order.line", string="Order Line", required=True, domain="[('order_id', '=', sale_order_id)]"
+        "sale.order.line",
+        string="Order Line",
+        required=True,
+        domain="[('order_id', '=', sale_order_id)]",
     )
 
     # Snapshot fields
     purchase_order = fields.Char(string="Customer PO")
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
     product_sku = fields.Char(string="Product SKU", readonly=True)
-    carrier = fields.Char(string="Carrier")
-    
+
+    # ✅ FIX: carrier must be Many2one, not Char
+    carrier = fields.Many2one("delivery.carrier", string="Carrier")
+
     return_date = fields.Date(string="Return Date")
     ship_date = fields.Date(string="Ship Date")
 
     status = fields.Selection(
-         [
-              ("good", "Good"),
+        [
+            ("good", "Good"),
             ("damaged", "Damaged"),
         ],
         default="good",
@@ -40,7 +45,7 @@ class SaleCustomRecord(models.Model):
             if rec.sale_order_id:
                 rec.purchase_order = rec.sale_order_id.client_order_ref
                 rec.carrier = (
-                    rec.sale_order_id.x_studio_carrier.name
+                    rec.sale_order_id.x_studio_carrier.id
                     if rec.sale_order_id.x_studio_carrier
                     else False
                 )
