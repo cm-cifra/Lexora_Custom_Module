@@ -5,11 +5,7 @@ class ReturnReport(models.Model):
     _description = 'Return Report'
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
-
-    merchant_id = fields.Many2one(
-        'res.partner',
-        string="Merchant",
-    )
+    merchant_id = fields.Many2one('res.partner', string="Merchant")
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
@@ -25,7 +21,6 @@ class ReturnReport(models.Model):
         string="Shipped Date",
         compute="_compute_shipped_date",
         store=True,
-        readonly=False,
     )
 
     note = fields.Text(string="Notes")
@@ -49,3 +44,13 @@ class ReturnReport(models.Model):
     def action_done(self):
         for rec in self:
             rec.state = 'done'
+
+
+class ReturnReportLine(models.Model):
+    _name = 'return.report.line'
+    _description = 'Return Report Line'
+
+    report_id = fields.Many2one('return.report', string="Return Report", ondelete='cascade')
+    product_id = fields.Many2one('product.product', string="Product", required=True)
+    quantity = fields.Float(string="Quantity", default=1.0)
+    reason = fields.Text(string="Reason")
