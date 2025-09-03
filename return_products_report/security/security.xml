@@ -1,0 +1,15 @@
+<odoo>
+<data noupdate="1">
+<!-- Menu and groups -->
+<record id="group_sale_custom_manager" model="res.groups">
+<field name="name">Sale Custom Addons / Manager</field>
+<field name="category_id" ref="base.module_category_sales_management"/>
+</record>
+
+
+<record id="group_sale_custom_user" model="res.groups">
+<field name="name">Sale Custom Addons / User</field>
+<field name="category_id" ref="base.module_category_sales_management"/>
+</record>
+</data>
+</odoo>
