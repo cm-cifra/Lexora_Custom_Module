@@ -1,6 +1,6 @@
 {
     "name": "Return Report",
-    "version": "1.0",
+    "version": "17.0.1.0.0",
     "summary": "Custom Return Report Application",
     "category": "Reporting",
     "author": "Your Company",

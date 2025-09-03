@@ -5,9 +5,13 @@
         <field name="model">return.report</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="name"/>
+                <field name="id"/>
                 <field name="date"/>
                 <field name="partner_id"/>
+                <field name="merchant_id"/>
+                <field name="po_id"/>
+                <field name="carrier_id"/>
+                <field name="condition"/>
                 <field name="state"/>
             </tree>
         </field>
@@ -34,9 +38,15 @@
                 </header>
                 <sheet>
                     <group>
-                        <field name="name"/>
+                        <field name="id" readonly="1"/>
                         <field name="date"/>
                         <field name="partner_id"/>
+                        <field name="merchant_id"/>
+                        <field name="po_id"/>
+                        <field name="carrier_id"/>
+                        <field name="condition"/>
+                        <field name="return_date"/>
+                        <field name="shipped_date"/>
                         <field name="note"/>
                     </group>
 
