@@ -1,4 +1,4 @@
-from odoo import fields, models, api
+from odoo import fields, models
 
 
 class SaleCustomRecord(models.Model):
@@ -11,14 +11,7 @@ class SaleCustomRecord(models.Model):
         string="Sales Order",
         required=True,
         ondelete="cascade",
-        domain="[('state', 'in', ['sale', 'done'])]",
-    )
-
-    purchase_order = fields.Char(
-        string="Customer PO",
-        related="sale_order_id.client_order_ref",
-        store=True,
-        readonly=True,
+        help="Link to the original Sales Order"
     )
 
     carrier_id = fields.Many2one(
@@ -61,8 +54,8 @@ class ReturnReportLine(models.Model):
         required=True,
         ondelete="cascade",
     )
-    x_return_product = fields.Many2one(
-        "product.template",
+    product_id = fields.Many2one(
+        "product.product",
         string="Returned Product",
         required=True,
     )
