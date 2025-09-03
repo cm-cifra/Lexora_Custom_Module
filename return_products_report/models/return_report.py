@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import fields, models, api
 
 
 class SaleCustomRecord(models.Model):
@@ -18,8 +18,7 @@ class SaleCustomRecord(models.Model):
     return_date = fields.Date(string="Return Date")
     status = fields.Selection(
         [
-            
-            ("good", "Good"),
+              ("good", "Good"),
             ("damaged", "Damaged"),
         ],
         default="pending",
@@ -28,16 +27,9 @@ class SaleCustomRecord(models.Model):
     notes = fields.Text(string="Notes")
     ship_date = fields.Date(string="Ship Date")
 
-
-class SaleOrder(models.Model):
-    _inherit = "sale.order"
-
-    def name_get(self):
-        """Display SO number with Purchase Order reference."""
-        result = []
-        for order in self:
-            name = order.name
-            if order.client_order_ref:
-                name = f"{order.name} - {order.client_order_ref}"
-            result.append((order.id, name))
-        return result
+    # 👇 Custom save button logic
+    def action_save(self):
+        """Custom save action: right now it just writes current values."""
+        for rec in self:
+            rec.write({})  # This forces saving
+        return True
