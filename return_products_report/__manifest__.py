@@ -6,7 +6,7 @@
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
-        "views/sale_custom_record_views.xml",
+        "views/custom_record_views.xml",
     ],
     "installable": True,
     "application": True,
