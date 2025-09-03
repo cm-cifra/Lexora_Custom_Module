@@ -6,7 +6,7 @@ class ReturnReport(models.Model):
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
 
-    # Customer comes from Sales Order
+    # Customer comes from Sales Order (related)
     partner_id = fields.Many2one(
         'res.partner',
         string="Customer",
@@ -15,13 +15,11 @@ class ReturnReport(models.Model):
         readonly=True,
     )
 
-    # Merchant = salesperson's partner
+    # Merchant chosen manually (not related)
     merchant_id = fields.Many2one(
         'res.partner',
         string="Merchant",
-        related="po_id.user_id.partner_id",
-        store=True,
-        readonly=True,
+        readonly=False,
     )
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
