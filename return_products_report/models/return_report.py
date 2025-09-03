@@ -3,21 +3,28 @@ from odoo import fields, models, api
 
 class SaleCustomRecord(models.Model):
     _name = "sale.custom.record"
-    _description = "Sale Custom Record"
+    _description = "Sale Return Report"
+    _rec_name = "sale_order_id"
 
-    sale_order_id = fields.Many2one("sale.order", string="Sales Order", required=True)
-    purchase_order = fields.Char(related="sale_order_id.client_order_ref", store=True)
-    product_id = fields.Many2one("product.product", string="Product", required=True)
-    product_sku = fields.Char(related="product_id.default_code", store=True)
-    carrier = fields.Many2one(
-        comodel_name="delivery.carrier",
-        string="Carrier",
-        related="sale_order_id.x_studio_carrier",
-        store=True,
+    sale_order_id = fields.Many2one(
+        "sale.order", string="Sales Order", required=True, ondelete="cascade"
     )
+
+    order_line_id = fields.Many2one(
+        "sale.order.line", string="Order Line", required=True, domain="[('order_id', '=', sale_order_id)]"
+    )
+
+    # Snapshot fields
+    purchase_order = fields.Char(string="Customer PO")
+    product_id = fields.Many2one("product.product", string="Product", readonly=True)
+    product_sku = fields.Char(string="Product SKU", readonly=True)
+    carrier = fields.Char(string="Carrier")
+
     return_date = fields.Date(string="Return Date")
+    ship_date = fields.Date(string="Ship Date")
+
     status = fields.Selection(
-        [
+         [
               ("good", "Good"),
             ("damaged", "Damaged"),
         ],
@@ -25,11 +32,28 @@ class SaleCustomRecord(models.Model):
         string="Status",
     )
     notes = fields.Text(string="Notes")
-    ship_date = fields.Date(string="Ship Date")
 
-    # 👇 Custom save button logic
-    def action_save(self):
-        """Custom save action: right now it just writes current values."""
+    @api.onchange("sale_order_id")
+    def _onchange_sale_order_id(self):
+        """Auto-fill purchase order + carrier when Sales Order is chosen."""
         for rec in self:
-            rec.write({})  # This forces saving
+            if rec.sale_order_id:
+                rec.purchase_order = rec.sale_order_id.client_order_ref
+                rec.carrier = (
+                    rec.sale_order_id.x_studio_carrier.name
+                    if rec.sale_order_id.x_studio_carrier
+                    else False
+                )
+                rec.order_line_id = False  # reset line if SO changes
+
+    @api.onchange("order_line_id")
+    def _onchange_order_line_id(self):
+        """Auto-fill product + SKU when order line is chosen."""
+        for rec in self:
+            if rec.order_line_id:
+                rec.product_id = rec.order_line_id.product_id
+                rec.product_sku = rec.order_line_id.product_id.default_code
+
+    def action_save(self):
+        """Custom save button (record stays in return report)."""
         return True

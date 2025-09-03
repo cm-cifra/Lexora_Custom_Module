@@ -1,10 +1,12 @@
 <odoo>
+    <!-- Tree View -->
     <record id="view_sale_custom_record_tree" model="ir.ui.view">
         <field name="name">sale.custom.record.tree</field>
         <field name="model">sale.custom.record</field>
         <field name="arch" type="xml">
             <tree>
                 <field name="sale_order_id"/>
+                <field name="order_line_id"/>
                 <field name="purchase_order"/>
                 <field name="product_id"/>
                 <field name="product_sku"/>
@@ -16,6 +18,7 @@
         </field>
     </record>
 
+    <!-- Form View -->
     <record id="view_sale_custom_record_form" model="ir.ui.view">
         <field name="name">sale.custom.record.form</field>
         <field name="model">sale.custom.record</field>
@@ -27,14 +30,19 @@
                 </header>
                 <sheet>
                     <group>
-                        <!-- Sales Order (dropdown uses name_get to show SO + PO) -->
+                        <!-- Select Sales Order -->
                         <field name="sale_order_id" options="{'no_create': True}"/>
 
-                        <!-- Related fields from your model -->
+                        <!-- Select Order Line (filtered by sale_order_id) -->
+                        <field name="order_line_id" options="{'no_create': True}"/>
+
+                        <!-- Auto-filled snapshot fields -->
                         <field name="purchase_order" readonly="1"/>
-                        <field name="product_id"/>
+                        <field name="product_id" readonly="1"/>
                         <field name="product_sku" readonly="1"/>
                         <field name="carrier" readonly="1"/>
+
+                        <!-- Return info -->
                         <field name="return_date"/>
                         <field name="ship_date"/>
                         <field name="status"/>
@@ -45,10 +53,12 @@
         </field>
     </record>
 
+    <!-- Menu Items -->
     <menuitem id="menu_sale_custom_root" name="Return Reports" parent="sale.sale_menu_root"/>
     <menuitem id="menu_sale_custom_record" name="Custom Records"
               parent="menu_sale_custom_root" action="action_sale_custom_record"/>
 
+    <!-- Action -->
     <record id="action_sale_custom_record" model="ir.actions.act_window">
         <field name="name">Custom Records</field>
         <field name="res_model">sale.custom.record</field>
