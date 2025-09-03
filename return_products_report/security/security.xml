@@ -1,9 +1,0 @@
-<odoo>
-    <data noupdate="0">
-        <!-- Manager Group -->
-        <record id="group_sale_custom_manager" model="res.groups">
-            <field name="name">Sale Custom Manager</field>
-            <field name="category_id" ref="base.module_category_sales_management"/>
-        </record>
-    </data>
-</odoo>
