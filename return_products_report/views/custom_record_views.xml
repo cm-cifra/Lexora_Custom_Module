@@ -6,7 +6,6 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="sale_order_id"/>
-                <field name="purchase_order"/>
                 <field name="carrier_id"/>
                 <field name="return_date"/>
                 <field name="status"/>
@@ -27,14 +26,13 @@
                 </header>
                 <sheet>
                     <group>
-                        <!-- Sales Order -->
+                        <!-- Select Sales Order (default Odoo search = SO name/ID) -->
                         <field name="sale_order_id" options="{'no_create': True}"/>
 
-                        <!-- Related fields -->
-                        <field name="purchase_order" readonly="1"/>
+                        <!-- Carrier is editable -->
                         <field name="carrier_id"/>
 
-                        <!-- Dates + status -->
+                        <!-- Return info -->
                         <field name="return_date"/>
                         <field name="ship_date"/>
                         <field name="status"/>
@@ -46,7 +44,7 @@
                         <page string="Returned Products">
                             <field name="line_ids">
                                 <tree editable="bottom">
-                                    <field name="x_return_product"/>
+                                    <field name="product_id"/>
                                     <field name="quantity"/>
                                     <field name="reason"/>
                                 </tree>
