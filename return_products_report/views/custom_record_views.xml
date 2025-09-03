@@ -1,19 +1,4 @@
 <odoo>
-    <!-- Action first -->
-    <record id="action_sale_custom_record" model="ir.actions.act_window">
-        <field name="name">Custom Records</field>
-        <field name="res_model">sale.custom.record</field>
-        <field name="view_mode">tree,form</field>
-    </record>
-
-    <!-- Root Menu -->
-    <menuitem id="menu_sale_custom_root" name="Return Reports" parent="sale.sale_menu_root"/>
-
-    <!-- Child Menu referencing action -->
-    <menuitem id="menu_sale_custom_record" name="Custom Records"
-              parent="menu_sale_custom_root" action="action_sale_custom_record"/>
-
-    <!-- Tree View -->
     <record id="view_sale_custom_record_tree" model="ir.ui.view">
         <field name="name">sale.custom.record.tree</field>
         <field name="model">sale.custom.record</field>
@@ -31,26 +16,47 @@
         </field>
     </record>
 
-    <!-- Form View -->
     <record id="view_sale_custom_record_form" model="ir.ui.view">
-        <field name="name">sale.custom.record.form</field>
-        <field name="model">sale.custom.record</field>
-        <field name="arch" type="xml">
-            <form>
-                <sheet>
-                    <group>
-                        <field name="sale_order_id"/>
-                        <field name="purchase_order"/>
-                        <field name="product_id"/>
-                        <field name="product_sku"/>
-                        <field name="carrier"/>
-                        <field name="return_date"/>
-                        <field name="ship_date"/>
-                        <field name="status"/>
-                        <field name="notes"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
+    <field name="name">sale.custom.record.form</field>
+    <field name="model">sale.custom.record</field>
+    <field name="arch" type="xml">
+        <form>
+            <header>
+                <button name="action_save" string="Save" type="object" class="btn-primary"/>
+                <button string="Discard" special="cancel" class="btn-secondary"/>
+            </header>
+            <sheet>
+                <group>
+                    <!-- Sale Order with context to show Purchase Order -->
+                    <field name="sale_order_id" options="{'no_create': True}">
+                        <tree>
+                            <field name="name"/>
+                            <field name="purchase_order"/>
+                        </tree>
+                    </field>
+
+                    <field name="purchase_order"/>
+                    <field name="product_id"/>
+                    <field name="product_sku"/>
+                    <field name="carrier"/>
+                    <field name="return_date"/>
+                    <field name="ship_date"/>
+                    <field name="status"/>
+                    <field name="notes"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+
+
+    <menuitem id="menu_sale_custom_root" name="Return Reports" parent="sale.sale_menu_root"/>
+
+    <menuitem id="menu_sale_custom_record" name="Custom Records" parent="menu_sale_custom_root" action="action_sale_custom_record"/>
+
+    <record id="action_sale_custom_record" model="ir.actions.act_window">
+        <field name="name">Custom Records</field>
+        <field name="res_model">sale.custom.record</field>
+        <field name="view_mode">tree,form</field>
     </record>
 </odoo>

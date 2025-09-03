@@ -18,12 +18,26 @@ class SaleCustomRecord(models.Model):
     return_date = fields.Date(string="Return Date")
     status = fields.Selection(
         [
-            ("pending", "Pending"),
-            ("returned", "Returned"),
-            ("cancelled", "Cancelled"),
+            
+            ("good", "Good"),
+            ("damaged", "Damaged"),
         ],
         default="pending",
         string="Status",
     )
     notes = fields.Text(string="Notes")
     ship_date = fields.Date(string="Ship Date")
+
+
+class SaleOrder(models.Model):
+    _inherit = "sale.order"
+
+    def name_get(self):
+        """Display SO number with Purchase Order reference."""
+        result = []
+        for order in self:
+            name = order.name
+            if order.client_order_ref:
+                name = f"{order.name} - {order.client_order_ref}"
+            result.append((order.id, name))
+        return result
