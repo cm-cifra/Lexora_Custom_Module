@@ -20,10 +20,6 @@
         <field name="model">sale.custom.record</field>
         <field name="arch" type="xml">
             <form>
-                <header>
-                    <button name="action_save" string="Save" type="object" class="btn-primary"/>
-                    <button string="Discard" special="cancel" class="btn-secondary"/>
-                </header>
                 <sheet>
                     <group>
                         <field name="sale_order_id" options="{'no_create': True}"/>
@@ -39,7 +35,6 @@
                         <page string="Returned Products">
                             <field name="line_ids">
                                 <tree editable="bottom">
-                                    <field name="order_line_id"/>
                                     <field name="product_id"/>
                                     <field name="quantity"/>
                                     <field name="reason"/>
@@ -52,22 +47,22 @@
         </field>
     </record>
 
-    <!-- Root Menu (App) -->
+    <!-- Top-Level Menu -->
     <menuitem id="menu_sale_custom_root"
               name="Return Reports"
               sequence="10"
-              action="action_sale_custom_record"
-              web_icon="return_report,static/description/icon.png"/> 
+              groups="base.group_user"/>
 
     <!-- Submenu -->
     <menuitem id="menu_sale_custom_record"
-              name="All Reports"
+              name="Custom Records"
               parent="menu_sale_custom_root"
-              action="action_sale_custom_record"/>
-              
+              action="action_sale_custom_record"
+              sequence="20"/>
+
     <!-- Action -->
     <record id="action_sale_custom_record" model="ir.actions.act_window">
-        <field name="name">Return Reports</field>
+        <field name="name">Custom Records</field>
         <field name="res_model">sale.custom.record</field>
         <field name="view_mode">tree,form</field>
     </record>
