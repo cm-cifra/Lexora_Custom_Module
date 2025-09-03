@@ -6,9 +6,9 @@ class ReturnReport(models.Model):
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     partner_id = fields.Many2one('res.partner', string="Customer", readonly=True)
-    merchant_id = fields.Many2one('res.partner', string="Merchant", readonly=True)
+    merchant_id = fields.Many2one('res.partner', string="Merchant", related="po_id.partner_id", store=True, readonly=True)
     po_id = fields.Many2one('sale.order', string="Sales Order")
-    carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
+    carrier_name = fields.Char(string="Carrier")  # use Char instead of Many2one to avoid delivery.carrier dependency
     condition = fields.Selection([
         ('good', 'Good'),
         ('damaged', 'Damaged')
@@ -26,7 +26,7 @@ class ReturnReport(models.Model):
 
     def _compute_shipped_date(self):
         for rec in self:
-            rec.shipped_date = rec.po_id.confirmation_date if rec.po_id else False
+            rec.shipped_date = getattr(rec.po_id, "confirmation_date", False)
 
     def action_confirm(self):
         for rec in self:
