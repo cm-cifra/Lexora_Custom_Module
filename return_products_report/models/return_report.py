@@ -62,18 +62,10 @@ class ReturnReportLine(models.Model):
         ondelete="cascade",
     )
 
-    order_line_id = fields.Many2one(
-        "sale.order.line",
-        string="Sales Order Line",
-        required=True,
-        domain="[('order_id', '=', parent.sale_order_id)]",  # ✅ only lines from selected SO
-    )
-
     product_id = fields.Many2one(
-        related="order_line_id.product_id",
-        string="Product",
-        store=True,
-        readonly=True,
+        "product.product",
+        string="Returned Product",
+        required=True,
     )
 
     quantity = fields.Float(
