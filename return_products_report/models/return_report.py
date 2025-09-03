@@ -11,21 +11,10 @@ class SaleCustomRecord(models.Model):
         string="Sales Order",
         required=True,
         ondelete="cascade",
-        domain="[('state', 'in', ['sale', 'done'])]",
     )
 
-    purchase_order = fields.Char(
-        string="Customer PO",
-        related="sale_order_id.client_order_ref",
-        store=True,
-        readonly=True,
-    )
-
-    carrier_id = fields.Many2one(
-        "delivery.carrier",
-        string="Carrier",
-        help="Carrier for this return report",
-    )
+    purchase_order = fields.Char(string="Customer PO")
+    carrier_id = fields.Many2one("delivery.carrier", string="Carrier")
 
     return_date = fields.Date(string="Return Date")
     ship_date = fields.Date(string="Ship Date")
@@ -43,12 +32,16 @@ class SaleCustomRecord(models.Model):
     line_ids = fields.One2many(
         "return.report.line",
         "report_id",
-        string="Returned Products",
+        string="Return Lines",
     )
 
-    def action_save(self):
-        """Custom save button (record stays in return report)."""
-        return True
+    @api.onchange("sale_order_id")
+    def _onchange_sale_order_id(self):
+        """Auto-fill purchase order + carrier when Sales Order is chosen."""
+        for rec in self:
+            if rec.sale_order_id:
+                rec.purchase_order = rec.sale_order_id.client_order_ref
+                rec.carrier_id = rec.sale_order_id.carrier_id or False
 
 
 class ReturnReportLine(models.Model):
@@ -62,10 +55,22 @@ class ReturnReportLine(models.Model):
         ondelete="cascade",
     )
 
+    order_line_id = fields.Many2one(
+        "sale.order.line",
+        string="Sales Order Line",
+        required=True,
+        domain="[('order_id', '=', parent.sale_order_id)]",  # only lines from SO
+    )
+
     product_id = fields.Many2one(
         "product.product",
-        string="Returned Product",
-        required=True,
+        string="Product",
+        readonly=True,
+    )
+
+    product_sku = fields.Char(
+        string="Product SKU",
+        readonly=True,
     )
 
     quantity = fields.Float(
@@ -73,6 +78,12 @@ class ReturnReportLine(models.Model):
         default=1.0,
     )
 
-    reason = fields.Char(
-        string="Reason for Return",
-    )
+    reason = fields.Char(string="Reason for Return")
+
+    @api.onchange("order_line_id")
+    def _onchange_order_line_id(self):
+        """Auto-fill product + SKU when order line is chosen."""
+        for rec in self:
+            if rec.order_line_id:
+                rec.product_id = rec.order_line_id.product_id
+                rec.product_sku = rec.order_line_id.product_id.default_code
