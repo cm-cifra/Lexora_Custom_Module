@@ -26,11 +26,12 @@ class ReturnReport(models.Model):
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
 
     shipped_date = fields.Datetime(
-        string="Shipped Date",
-        related="po_id.date_order",
-        store=True,
-        readonly=True,
-    )
+    string="Shipped Date",
+    related="po_id.confirmation_date",
+    store=True,
+    readonly=True,
+)
+
 
     note = fields.Text(string="Notes")
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
