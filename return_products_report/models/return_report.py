@@ -19,7 +19,7 @@ class SaleCustomRecord(models.Model):
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
     product_sku = fields.Char(string="Product SKU", readonly=True)
     carrier = fields.Char(string="Carrier")
-
+    
     return_date = fields.Date(string="Return Date")
     ship_date = fields.Date(string="Ship Date")
 
