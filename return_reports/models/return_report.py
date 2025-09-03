@@ -6,16 +6,12 @@ class ReturnReport(models.Model):
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
 
-    # Merchant (manual selection from res.partner)
     merchant_id = fields.Many2one(
         'res.partner',
         string="Merchant",
-        required=True,
     )
 
-    # Sales Order
     po_id = fields.Many2one('sale.order', string="Sales Order")
-
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
@@ -26,12 +22,11 @@ class ReturnReport(models.Model):
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
 
     shipped_date = fields.Datetime(
-    string="Shipped Date",
-    related="po_id.confirmation_date",
-    store=True,
-    readonly=True,
-)
-
+        string="Shipped Date",
+        related="po_id.x_studio_date_shipped",
+        store=True,
+        readonly=True,
+    )
 
     note = fields.Text(string="Notes")
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
