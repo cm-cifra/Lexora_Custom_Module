@@ -12,7 +12,7 @@ class ReturnReport(models.Model):
     # NEW: Purchase Order reference from sale.order
     purchase_order_ref = fields.Char(
     string="Purchase Order",
-    related="po_id.x_studio_purchase_order",  # use real Studio field name
+    related="po_id.purchase_order",  # use real Studio field name
     store=True,
     readonly=False,
 )
