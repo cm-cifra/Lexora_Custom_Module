@@ -7,7 +7,12 @@ class ReturnReport(models.Model):
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     merchant_id = fields.Many2one('res.partner', string="Merchant")
 
-    po_id = fields.Many2one('sale.order', string="Sales Order")
+    # Manual Purchase Order Number input
+    purchase_order_number = fields.Char(string="Purchase Order")
+
+    # Link to Sale Order (if PO matches)
+    po_id = fields.Many2one('sale.order', string="Sales Order", readonly=True)
+
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
@@ -37,6 +42,15 @@ class ReturnReport(models.Model):
         for rec in self:
             rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
+    @api.onchange('purchase_order_number')
+    def _onchange_purchase_order_number(self):
+        """Auto link Sales Order if PO number matches"""
+        if self.purchase_order_number:
+            sale_order = self.env['sale.order'].search([
+                ('x_studio_purchase_order', '=', self.purchase_order_number)  # <-- use your real field name
+            ], limit=1)
+            self.po_id = sale_order if sale_order else False
+
     def action_confirm(self):
         for rec in self:
             rec.state = 'confirmed'
@@ -44,13 +58,3 @@ class ReturnReport(models.Model):
     def action_done(self):
         for rec in self:
             rec.state = 'done'
-
-
-class ReturnReportLine(models.Model):
-    _name = 'return.report.line'
-    _description = 'Return Report Line'
-
-    report_id = fields.Many2one('return.report', string="Return Report", ondelete='cascade')
-    product_id = fields.Many2one('product.product', string="Product", required=True)
-    quantity = fields.Float(string="Quantity", default=1.0)
-    reason = fields.Text(string="Reason")
