@@ -8,6 +8,15 @@ class ReturnReport(models.Model):
     merchant_id = fields.Many2one('res.partner', string="Merchant")
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
+
+    # NEW: Purchase Order reference from sale.order
+    purchase_order_ref = fields.Char(
+        string="Purchase Order",
+        related="po_id.purchase_order",
+        store=True,
+        readonly=False,
+    )
+
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
@@ -44,13 +53,3 @@ class ReturnReport(models.Model):
     def action_done(self):
         for rec in self:
             rec.state = 'done'
-
-
-class ReturnReportLine(models.Model):
-    _name = 'return.report.line'
-    _description = 'Return Report Line'
-
-    report_id = fields.Many2one('return.report', string="Return Report", ondelete='cascade')
-    product_id = fields.Many2one('product.product', string="Product", required=True)
-    quantity = fields.Float(string="Quantity", default=1.0)
-    reason = fields.Text(string="Reason")
