@@ -6,11 +6,8 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="sale_order_id"/>
-                <field name="order_line_id"/>
                 <field name="purchase_order"/>
-                <field name="product_id"/>
-                <field name="product_sku"/>
-                <field name="carrier"/>
+                <field name="carrier_id"/>
                 <field name="return_date"/>
                 <field name="status"/>
                 <field name="ship_date"/>
@@ -30,24 +27,32 @@
                 </header>
                 <sheet>
                     <group>
-                        <!-- Select Sales Order -->
+                        <!-- Sales Order -->
                         <field name="sale_order_id" options="{'no_create': True}"/>
 
-                        <!-- Select Order Line (filtered by sale_order_id) -->
-                        <field name="order_line_id" options="{'no_create': True}"/>
-
-                        <!-- Auto-filled snapshot fields -->
+                        <!-- Related fields -->
                         <field name="purchase_order" readonly="1"/>
-                        <field name="product_id" readonly="1"/>
-                        <field name="product_sku" readonly="1"/>
-                        <field name="carrier" readonly="1"/>
+                        <field name="carrier_id"/>
 
-                        <!-- Return info -->
+                        <!-- Dates + status -->
                         <field name="return_date"/>
                         <field name="ship_date"/>
                         <field name="status"/>
                         <field name="notes"/>
                     </group>
+
+                    <!-- Return Lines -->
+                    <notebook>
+                        <page string="Returned Products">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="x_return_product"/>
+                                    <field name="quantity"/>
+                                    <field name="reason"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
