@@ -5,18 +5,13 @@ class ReturnReport(models.Model):
     _description = 'Return Report'
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
-    merchant_id = fields.Many2one('res.partner', string="Merchant")
+
+    merchant_id = fields.Many2one(
+        'res.partner',
+        string="Merchant",
+    )
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
-
-    # NEW: Purchase Order reference from sale.order
-    purchase_order_ref = fields.Char(
-    string="Purchase Order",
-    related="po_id.x_studio_purchase_order",  # use real Studio field name
-    store=True,
-    readonly=False,
-)
-
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
@@ -30,6 +25,7 @@ class ReturnReport(models.Model):
         string="Shipped Date",
         compute="_compute_shipped_date",
         store=True,
+        readonly=False,
     )
 
     note = fields.Text(string="Notes")
