@@ -7,7 +7,6 @@
             <tree>
                 <field name="id"/>
                 <field name="date"/>
-                <field name="partner_id"/>
                 <field name="merchant_id"/>
                 <field name="po_id"/>
                 <field name="carrier_id"/>
@@ -39,7 +38,6 @@
                 <sheet>
                     <group>
                         <field name="date"/>
-                        <field name="partner_id"/>
                         <field name="merchant_id"/>
                         <field name="po_id"/>
                         <field name="carrier_id"/>
