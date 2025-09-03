@@ -14,7 +14,7 @@ class ReturnReport(models.Model):
         ('damaged', 'Damaged')
     ], string="Condition", default='good')
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
-    shipped_date = fields.Datetime(string="Shipped Date", related="po_id.date_order", store=True, readonly=True)
+    shipped_date = fields.Datetime(string="Shipped Date", compute="_compute_shipped_date", store=True, readonly=True)
     note = fields.Text(string="Notes")
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
 
@@ -24,12 +24,14 @@ class ReturnReport(models.Model):
         ('done', 'Done')
     ], string="Status", default='draft', tracking=True)
 
+    def _compute_shipped_date(self):
+        for rec in self:
+            rec.shipped_date = rec.po_id.confirmation_date if rec.po_id else False
+
     def action_confirm(self):
-        """Move report to Confirmed state"""
         for rec in self:
             rec.state = 'confirmed'
 
     def action_done(self):
-        """Move report to Done state"""
         for rec in self:
             rec.state = 'done'
