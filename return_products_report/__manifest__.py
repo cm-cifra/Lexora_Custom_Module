@@ -1,7 +1,9 @@
 {
-    "name": "Return  Report",
+    "name": "Return Report",
     "version": "1.0",
-    "author": "chris mark cifra",
+    "author": "Chris Mark Cifra",
+    "category": "Sales",
+    "summary": "Manage product returns linked to Sales Orders",
     "depends": ["sale_management", "product", "delivery"],
     "data": [
         "security/security.xml",
