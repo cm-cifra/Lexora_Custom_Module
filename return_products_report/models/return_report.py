@@ -21,7 +21,7 @@ class SaleCustomRecord(models.Model):
               ("good", "Good"),
             ("damaged", "Damaged"),
         ],
-        default="pending",
+        default="good",
         string="Status",
     )
     notes = fields.Text(string="Notes")
