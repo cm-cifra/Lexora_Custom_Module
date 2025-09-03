@@ -19,7 +19,12 @@ class SaleCustomRecord(models.Model):
     po_number = fields.Char(string="PO Number", related="sale_order_id.purchase_order", store=True)
 
     # Carrier read from sale.order field 'x_studio_carrier' (custom Studio field)
-    carrier = fields.Char(string="Carrier", related="sale_order_id.x_studio_carrier", store=True)
+    carrier = fields.Many2one(
+    comodel_name="delivery.carrier",
+    string="Carrier",
+    related="sale_order_id.x_studio_carrier",
+    store=True,
+)
 
     product_id = fields.Many2one(
         comodel_name="product.product",
