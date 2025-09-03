@@ -17,42 +17,37 @@
     </record>
 
     <record id="view_sale_custom_record_form" model="ir.ui.view">
-    <field name="name">sale.custom.record.form</field>
-    <field name="model">sale.custom.record</field>
-    <field name="arch" type="xml">
-        <form>
-            <header>
-                <button name="action_save" string="Save" type="object" class="btn-primary"/>
-                <button string="Discard" special="cancel" class="btn-secondary"/>
-            </header>
-            <sheet>
-                <group>
-                    <!-- Sale Order with context to show Purchase Order -->
-                    <field name="sale_order_id" options="{'no_create': True}">
-                        <tree>
-                            <field name="name"/>
-                            <field name="purchase_order"/>
-                        </tree>
-                    </field>
+        <field name="name">sale.custom.record.form</field>
+        <field name="model">sale.custom.record</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_save" string="Save" type="object" class="btn-primary"/>
+                    <button string="Discard" special="cancel" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <!-- Sales Order (dropdown uses name_get to show SO + PO) -->
+                        <field name="sale_order_id" options="{'no_create': True}"/>
 
-                    <field name="purchase_order"/>
-                    <field name="product_id"/>
-                    <field name="product_sku"/>
-                    <field name="carrier"/>
-                    <field name="return_date"/>
-                    <field name="ship_date"/>
-                    <field name="status"/>
-                    <field name="notes"/>
-                </group>
-            </sheet>
-        </form>
-    </field>
-</record>
-
+                        <!-- Related fields from your model -->
+                        <field name="purchase_order" readonly="1"/>
+                        <field name="product_id"/>
+                        <field name="product_sku" readonly="1"/>
+                        <field name="carrier" readonly="1"/>
+                        <field name="return_date"/>
+                        <field name="ship_date"/>
+                        <field name="status"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
 
     <menuitem id="menu_sale_custom_root" name="Return Reports" parent="sale.sale_menu_root"/>
-
-    <menuitem id="menu_sale_custom_record" name="Custom Records" parent="menu_sale_custom_root" action="action_sale_custom_record"/>
+    <menuitem id="menu_sale_custom_record" name="Custom Records"
+              parent="menu_sale_custom_root" action="action_sale_custom_record"/>
 
     <record id="action_sale_custom_record" model="ir.actions.act_window">
         <field name="name">Custom Records</field>
