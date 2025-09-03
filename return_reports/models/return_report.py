@@ -6,23 +6,16 @@ class ReturnReport(models.Model):
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
 
-    # Customer comes from Sales Order (related)
-    partner_id = fields.Many2one(
-        'res.partner',
-        string="Customer",
-        related="po_id.partner_id",
-        store=True,
-        readonly=True,
-    )
-
-    # Merchant chosen manually (not related)
+    # Merchant (manual selection from res.partner)
     merchant_id = fields.Many2one(
         'res.partner',
         string="Merchant",
-        readonly=False,
+        required=True,
     )
 
+    # Sales Order
     po_id = fields.Many2one('sale.order', string="Sales Order")
+
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
