@@ -12,7 +12,8 @@ class ReturnReport(models.Model):
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
-    x_po = fields.Char(string='Return Number', readonly=True)  # auto-generated after confirm
+    return_id = fields.Char(string=' ', readonly=True)  # auto-generated after confirm
+    x_po = fields.Char(string='PO #') 
     prod_sku = fields.Char(string='Sku')
     condition = fields.Selection([
         ('good', 'Good'),
@@ -47,10 +48,13 @@ class ReturnReport(models.Model):
                 raise UserError("You can only confirm a draft return report.")
 
             # Generate RETURN number if not already generated
-            if not rec.x_po:
+            if not rec.return_id:
                 date_str = fields.Date.today().strftime('%Y/%m')
                 seq_number = self.env['ir.sequence'].next_by_code('return.report') or '001'
-                rec.x_po = f'RETURN/{date_str}/{seq_number.zfill(4)}'
+                
+                # Append x_po at the end if available
+                po_str = f"/{rec.x_po}" if rec.x_po else ""
+                rec.return_id = f'RETURN/{date_str}/{seq_number.zfill(4)}{po_str}'
 
             rec.state = 'confirmed'
 
