@@ -7,8 +7,7 @@ class ReturnReport(models.Model):
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     merchant_id = fields.Many2one('res.partner', string="Merchant")
 
-    po_id = fields.Many2one('sale.order', string="Sales Order")  # keep existing
-    po_number = fields.Char(string="PO #")  # new Char field
+    po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
