@@ -17,7 +17,7 @@
     </record>
 
     <!-- Form View -->
- <record id="view_return_report_form" model="ir.ui.view">
+<record id="view_return_report_form" model="ir.ui.view">
     <field name="name">return.report.form</field>
     <field name="model">return.report</field>
     <field name="arch" type="xml">
@@ -39,7 +39,8 @@
                 <group col="2">
                     <field name="date"/>
                     <field name="merchant_id"/>
-                    <field name="po_number"/> <!-- Updated PO field -->
+                    <field name="po_id"/>       <!-- existing Many2one -->
+                    <field name="po_number"/>   <!-- new Char field -->
                     <field name="carrier_id"/>
                     <field name="condition"/>
                     <field name="return_date"/>
@@ -69,6 +70,7 @@
         </form>
     </field>
 </record>
+
 
 
     <!-- Action + Menu -->
