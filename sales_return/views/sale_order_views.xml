@@ -1,3 +1,25 @@
+<odoo>
+    <!-- Tree view for return orders -->
+    <record id="view_sale_order_return_tree" model="ir.ui.view">
+        <field name="name">sale.order.return.tree</field>
+        <field name="model">sale.order</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <tree string="Return Orders">
+                <field name="company_id" invisible="1"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="date_order"/>
+                <field name="order_state"/>
+                <field name="x_return_date"/>
+                <field name="x_condition"/>
+                <field name="product_sku"/>
+                <field name="is_return_order"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form view when opening a record -->
 <record id="view_sale_order_return_form" model="ir.ui.view">
     <field name="name">sale.order.return.form</field>
     <field name="model">sale.order</field>
@@ -17,7 +39,7 @@
                     <field name="is_return_order"/>
                 </group>
 
-                <!-- Notebook with Order Lines -->
+                <!-- Notebook with order lines -->
                 <notebook>
                     <page string="Order Lines">
                         <field name="order_line">
@@ -40,7 +62,7 @@
                 </notebook>
             </sheet>
 
-            <!-- Chatter / Log notes -->
+            <!-- Chatter must be outside <sheet> -->
             <div class="oe_chatter">
                 <field name="message_follower_ids" widget="mail_followers"/>
                 <field name="activity_ids" widget="mail_activity"/>
@@ -49,3 +71,43 @@
         </form>
     </field>
 </record>
+
+    <!-- Custom add form when clicking Create -->
+    <record id="view_sale_order_return_add_form" model="ir.ui.view">
+        <field name="name">sale.order.return.add.form</field>
+        <field name="model">sale.order</field>
+        <field name="priority">5</field>        <!-- Higher priority than default -->
+        <field name="arch" type="xml">
+            <form string="Add Return Order">
+                <sheet>
+                    <group>
+                        <field name="company_id" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="date_order"/>
+                        <field name="order_state" readonly="1" default="return_initiated"/>
+                        <field name="x_return_date"/>
+                        <field name="x_condition"/>
+                        <field name="product_sku"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for return orders -->
+    <record id="action_sale_order_return" model="ir.actions.act_window">
+        <field name="name">Return Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
+        <field name="view_mode">tree,form</field>
+        <field name="views" eval="[
+            (ref('view_sale_order_return_tree'), 'tree'),
+            (ref('view_sale_order_return_form'), 'form')
+        ]"/>
+        <field name="context">{'default_order_state': 'return_initiated'}</field>
+    </record>
+
+    <!-- Separate menu just for returns -->
+    <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
+    <menuitem id="menu_sale_order_return_list" name="Return Orders List" parent="menu_sale_order_return_root" action="action_sale_order_return" sequence="10"/>
+</odoo>
