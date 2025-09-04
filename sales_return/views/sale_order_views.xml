@@ -1,10 +1,13 @@
 <odoo>
-    <!-- Tree view for Return Orders -->
+    <!-- Tree view for return orders -->
     <record id="view_sale_order_return_tree" model="ir.ui.view">
         <field name="name">sale.order.return.tree</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
             <tree string="Return Orders" multi_edit="1">
+                <!-- Include company_id because partner_id domain references it -->
+                <field name="company_id" invisible="1"/>
+
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date_order"/>
@@ -17,7 +20,7 @@
         </field>
     </record>
 
-    <!-- Form view for Return Orders -->
+    <!-- Form view for return orders -->
     <record id="view_sale_order_return_form" model="ir.ui.view">
         <field name="name">sale.order.return.form</field>
         <field name="model">sale.order</field>
@@ -25,9 +28,10 @@
             <form string="Return Order">
                 <sheet>
                     <group>
+                        <!-- Keep company_id on the form too -->
+                        <field name="company_id" invisible="1"/>
                         <field name="name"/>
                         <field name="partner_id"/>
-                        <field name="company_id"/>
                         <field name="date_order"/>
                         <field name="order_state"/>
                         <field name="x_return_date"/>
@@ -40,25 +44,18 @@
         </field>
     </record>
 
-    <!-- Action for Return Orders -->
+    <!-- Action to display only return orders -->
     <record id="action_sale_order_return" model="ir.actions.act_window">
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_sale_order_return_tree"/>
         <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
     </record>
 
-    <!-- Top-level menu -->
+    <!-- Menu -->
     <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
-
-    <!-- Submenu linking to the action -->
-    <menuitem id="menu_sale_order_return_list"
-              name="Return Orders List"
-              parent="menu_sale_order_return_root"
-              action="action_sale_order_return"
-              sequence="10"/>
-
-    <!-- Multi-action button to open wizard -->
+    <menuitem id="menu_sale_order_return_list" name="Return Orders List" parent="menu_sale_order_return_root" action="action_sale_order_return" sequence="10"/>
     <record id="sale_order_return_tree_action_server" model="ir.actions.server">
         <field name="name">Open Return Wizard</field>
         <field name="model_id" ref="sale.model_sale_order"/>
