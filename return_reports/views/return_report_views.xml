@@ -52,14 +52,14 @@
                     <!-- Notebook with Return Lines -->
                     <notebook>
                         <page string="Return Lines">
-                            <field name="line_ids" mode="tree,form" context="{'default_report_id': active_id}">
-                                <tree editable="bottom">
+                            <field name="line_ids" context="{'default_report_id': active_id}">
+                                <tree editable="bottom" string="Return Lines" model="return.report.line">
                                     <field name="product_id"/>
                                     <field name="sku"/>
                                     <field name="quantity"/>
                                     <field name="reason"/>
                                 </tree>
-                                <form string="Return Line">
+                                <form string="Return Line" model="return.report.line">
                                     <group>
                                         <group>
                                             <field name="product_id"/>
