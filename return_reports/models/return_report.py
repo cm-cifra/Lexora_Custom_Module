@@ -15,14 +15,9 @@ class ReturnReport(models.Model):
     ], string="Condition", default='good')
 
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
-
-    shipped_date = fields.Datetime(
-        string="Shipped Date",
-        compute="_compute_shipped_date",
-        store=True,
-    )
-
+    shipped_date = fields.Datetime(string="Shipped Date", compute="_compute_shipped_date", store=True)
     note = fields.Text(string="Notes")
+
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
 
     state = fields.Selection([
