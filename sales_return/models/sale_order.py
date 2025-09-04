@@ -3,7 +3,7 @@ from odoo import models, fields, api
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    # Make sure the custom 'order_state' field exists in the model
+    # Declare the existing selection field
     order_state = fields.Selection(
         selection=[
             ('po', 'PO'),
@@ -12,10 +12,9 @@ class SaleOrder(models.Model):
             ('ship', 'Shipped'),
             ('cancel', 'Cancelled'),
             ('return_initiated', 'Return Initiated'),
-            ('returned', 'Returned')
+            ('returned', 'Returned'),
         ],
         string='Order State',
-        readonly=False,
         store=True
     )
 
@@ -31,7 +30,6 @@ class SaleOrder(models.Model):
         for order in self:
             order.is_return_order = order.order_state in ['return_initiated', 'returned']
 
-    # Method to get all return orders
     @api.model
     def get_return_orders(self):
         return self.search([('order_state', 'in', ['return_initiated', 'returned'])])
