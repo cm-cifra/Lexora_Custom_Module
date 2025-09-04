@@ -7,9 +7,11 @@
             <tree string="Return Orders">
                 <field name="name"/>
                 <field name="partner_id"/>
-                <field name="company_id"/>
                 <field name="date_order"/>
-                <field name="order_state"/> <!-- FIXED -->
+                <field name="order_state"/>
+                <field name="x_return_date"/>
+                <field name="x_condition"/>
+                <field name="product_sku"/>
                 <field name="is_return_order"/>
             </tree>
         </field>
@@ -27,8 +29,13 @@
                         <field name="partner_id"/>
                         <field name="company_id"/>
                         <field name="date_order"/>
-                        <field name="order_state"/> <!-- FIXED -->
+                        <field name="order_state"/>
                         <field name="is_return_order"/>
+                    </group>
+                    <group string="Return Details">
+                        <field name="x_return_date"/>
+                        <field name="x_condition"/>
+                        <field name="product_sku"/>
                     </group>
                     <notebook>
                         <page string="Order Lines">
@@ -53,18 +60,13 @@
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_sale_order_return_tree"/>
-        <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field> <!-- FIXED -->
+        <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
     </record>
 
     <!-- Top-level menu item -->
-    <menuitem id="menu_sale_order_return_root"
-              name="Return Orders"
-              sequence="100"/>
+    <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
 
     <!-- Submenu linking to the action -->
-    <menuitem id="menu_sale_order_return_list"
-              name="Return Orders List"
-              parent="menu_sale_order_return_root"
-              action="action_sale_order_return"
-              sequence="10"/>
+    <menuitem id="menu_sale_order_return_list" name="Return Orders List"
+              parent="menu_sale_order_return_root" action="action_sale_order_return" sequence="10"/>
 </odoo>
