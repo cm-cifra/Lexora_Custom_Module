@@ -4,10 +4,8 @@
         <field name="name">sale.order.return.tree</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <tree string="Return Orders" multi_edit="1">
-                <!-- Keep company_id hidden (used for partner domain) -->
+            <tree string="Return Orders">
                 <field name="company_id" invisible="1"/>
-
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date_order"/>
@@ -24,11 +22,11 @@
     <record id="view_sale_order_return_form" model="ir.ui.view">
         <field name="name">sale.order.return.form</field>
         <field name="model">sale.order</field>
+        <field name="priority">20</field>
         <field name="arch" type="xml">
             <form string="Return Order">
                 <sheet>
                     <group>
-                        <!-- Keep company_id hidden -->
                         <field name="company_id" invisible="1"/>
                         <field name="name"/>
                         <field name="partner_id"/>
@@ -44,7 +42,29 @@
         </field>
     </record>
 
-    <!-- Action to display only return orders -->
+    <!-- Custom form view for "Add Return Order" (Create) -->
+    <record id="view_sale_order_return_add_form" model="ir.ui.view">
+        <field name="name">sale.order.return.add.form</field>
+        <field name="model">sale.order</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <form string="Add Return Order">
+                <sheet>
+                    <group>
+                        <field name="company_id" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="date_order"/>
+                        <field name="order_state" readonly="1" default="return_initiated"/>
+                        <field name="x_return_date"/>
+                        <field name="x_condition"/>
+                        <field name="product_sku"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for return orders -->
     <record id="action_sale_order_return" model="ir.actions.act_window">
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
@@ -52,34 +72,17 @@
         <field name="view_mode">tree,form</field>
         <field name="views" eval="[
             (ref('view_sale_order_return_tree'), 'tree'),
-            (ref('view_sale_order_return_form'), 'form')
+            (ref('view_sale_order_return_form'), 'form'),
+            (ref('view_sale_order_return_add_form'), 'form')
         ]"/>
+        <field name="context">{'default_order_state': 'return_initiated'}</field>
     </record>
 
-    <!-- Menu items -->
+    <!-- Menu -->
     <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
     <menuitem id="menu_sale_order_return_list"
               name="Return Orders List"
               parent="menu_sale_order_return_root"
               action="action_sale_order_return"
               sequence="10"/>
-
-    <!-- Server action to open wizard from list view -->
-    <record id="sale_order_return_tree_action_server" model="ir.actions.server">
-        <field name="name">Open Return Wizard</field>
-        <field name="model_id" ref="sale.model_sale_order"/>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="state">multi</field>
-        <field name="binding_view_types">list</field>
-        <field name="code">
-            action = {
-                "name": "Update Return Orders",
-                "type": "ir.actions.act_window",
-                "res_model": "sale.return.wizard",
-                "view_mode": "form",
-                "target": "new",
-                "context": {"default_order_ids": active_ids},
-            }
-        </field>
-    </record>
 </odoo>
