@@ -22,21 +22,27 @@
         <field name="model">return.report</field>
         <field name="arch" type="xml">
             <form string="Return Report">
-            <header>
-    <!-- Confirm button: clickable only in draft -->
+     <header>
+    <!-- Confirm button: only enabled in draft, turns gray after clicked -->
     <button name="action_confirm"
             type="object"
             string="Confirm"
             class="btn-primary"
-            modifiers='{"disabled": [["state","!=","draft"]]}'
+            modifiers='{
+                "disabled": [["state","!=","draft"]],
+                "class": [["state","!=","draft","btn-secondary"]]
+            }'
     />
 
-    <!-- Mark as Done button: clickable only in confirmed -->
+    <!-- Mark as Done button: only enabled in confirmed, turns gray after clicked -->
     <button name="action_done"
             type="object"
             string="Mark as Done"
             class="btn-success"
-            modifiers='{"disabled": [["state","!=","confirmed"]]}'
+            modifiers='{
+                "disabled": [["state","!=","confirmed"]],
+                "class": [["state","!=","confirmed","btn-secondary"]]
+            }'
     />
 
     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
