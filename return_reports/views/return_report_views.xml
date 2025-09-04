@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="id"/>
+                <field name="return_id"/>
                 <field name="date"/>
                 <field name="merchant_id"/>
                 <field name="po_id"/>
@@ -28,17 +29,15 @@
                     <button name="action_confirm"
                             type="object"
                             string="Confirm"
-                            t-att-class="state == 'draft' and 'btn btn-primary' or 'btn btn-secondary'"
-                            modifiers='{"invisible": [["state","!=","draft"]]}'
-                    />
+                            class="btn-primary"
+                            attrs="{'invisible': [('state','!=','draft')], 'readonly': [('state','!=','draft')]}"/>
 
                     <!-- Mark as Done button -->
                     <button name="action_done"
                             type="object"
                             string="Mark as Done"
-                            t-att-class="state == 'confirmed' and 'btn btn-success' or 'btn btn-secondary'"
-                            modifiers='{"invisible": [["state","!=","confirmed"]]}'
-                    />
+                            class="btn-success"
+                            attrs="{'invisible': [('state','!=','confirmed')], 'readonly': [('state','!=','confirmed')]}"/>
 
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
                 </header>
@@ -46,18 +45,17 @@
                 <sheet>
                     <group>
                         <!-- Two-column layout -->
-                        <group col="2">   
+                        <group col="2">
                             <field name="return_id" readonly="1"/>
-                                <field name="x_po" />   
-                           
+                            <field name="x_po"/>
                             <field name="merchant_id"/>
-                            <field name="po_id"/> 
+                            <field name="po_id"/>
                             <field name="carrier_id"/>
                             <field name="condition"/>
                         </group>
 
                         <!-- Full-width fields -->
-                        <group>  
+                        <group>
                             <field name="return_date"/>
                             <field name="shipped_date"/>
                             <field name="prod_sku"/>
