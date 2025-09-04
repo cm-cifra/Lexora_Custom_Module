@@ -22,31 +22,26 @@
         <field name="model">return.report</field>
         <field name="arch" type="xml">
             <form string="Return Report">
-     <header>
-    <!-- Confirm button: only enabled in draft, turns gray after clicked -->
+   <header>
+    <!-- Confirm button: disabled unless draft, color changes -->
     <button name="action_confirm"
             type="object"
             string="Confirm"
-            class="btn-primary"
-            modifiers='{
-                "disabled": [["state","!=","draft"]],
-                "class": [["state","!=","draft","btn-secondary"]]
-            }'
+            t-att-class="state == 'draft' and 'btn btn-primary' or 'btn btn-secondary'"
+            modifiers='{"disabled": [["state","!=","draft"]]}'
     />
 
-    <!-- Mark as Done button: only enabled in confirmed, turns gray after clicked -->
+    <!-- Mark as Done button: disabled unless confirmed, color changes -->
     <button name="action_done"
             type="object"
             string="Mark as Done"
-            class="btn-success"
-            modifiers='{
-                "disabled": [["state","!=","confirmed"]],
-                "class": [["state","!=","confirmed","btn-secondary"]]
-            }'
+            t-att-class="state == 'confirmed' and 'btn btn-success' or 'btn btn-secondary'"
+            modifiers='{"disabled": [["state","!=","confirmed"]]}'
     />
 
     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
 </header>
+
 
 
                 <sheet>
