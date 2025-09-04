@@ -5,7 +5,7 @@
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
             <tree string="Return Orders" multi_edit="1">
-                <!-- Include company_id because partner_id domain references it -->
+                <!-- Needed for partner_id domain -->
                 <field name="company_id" invisible="1"/>
 
                 <field name="name"/>
@@ -28,7 +28,6 @@
             <form string="Return Order">
                 <sheet>
                     <group>
-                        <!-- Keep company_id hidden -->
                         <field name="company_id" invisible="1"/>
                         <field name="name"/>
                         <field name="partner_id"/>
@@ -44,7 +43,7 @@
         </field>
     </record>
 
-    <!-- Action to display only return orders -->
+    <!-- Action: link tree and custom form together -->
     <record id="action_sale_order_return" model="ir.actions.act_window">
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
@@ -63,23 +62,4 @@
               parent="menu_sale_order_return_root"
               action="action_sale_order_return"
               sequence="10"/>
-
-    <!-- Server action to open wizard from list view -->
-    <record id="sale_order_return_tree_action_server" model="ir.actions.server">
-        <field name="name">Open Return Wizard</field>
-        <field name="model_id" ref="sale.model_sale_order"/>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="state">multi</field>
-        <field name="binding_view_types">list</field>
-        <field name="code">
-            action = {
-                "name": "Update Return Orders",
-                "type": "ir.actions.act_window",
-                "res_model": "sale.return.wizard",
-                "view_mode": "form",
-                "target": "new",
-                "context": {"default_order_ids": active_ids},
-            }
-        </field>
-    </record>
 </odoo>
