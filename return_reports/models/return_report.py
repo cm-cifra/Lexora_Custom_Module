@@ -9,7 +9,8 @@ class ReturnReport(models.Model):
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
-
+    x_po = fields(string='Po #')
+    prod_sku = fields(string='Sku')
     condition = fields.Selection([
         ('good', 'Good'),
         ('damaged', 'Damaged')
