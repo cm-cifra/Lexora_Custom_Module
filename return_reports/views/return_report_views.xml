@@ -33,7 +33,6 @@
                            statusbar_visible="draft,confirmed,done"/>
                 </header>
                 <sheet>
-                    <!-- Two Column Layout -->
                     <group>
                         <group>
                             <field name="date"/>
@@ -49,32 +48,30 @@
                         </group>
                     </group>
 
-                    <!-- Notebook with Return Lines -->
                     <notebook>
                         <page string="Return Lines">
-                            <field name="line_ids" context="{'default_report_id': active_id}">
-    <tree editable="bottom">
-        <field name="product_id"/>
-        <field name="sku"/>
-        <field name="quantity"/>
-        <field name="reason"/>
-    </tree>
-    <form string="Return Line">
-        <sheet>
-            <group>
-                <group>
-                    <field name="product_id"/>
-                    <field name="sku"/>
-                </group>
-                <group>
-                    <field name="quantity"/>
-                    <field name="reason"/>
-                </group>
-            </group>
-        </sheet>
-    </form>
-</field>
-
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="sku"/>
+                                    <field name="quantity"/>
+                                    <field name="reason"/>
+                                </tree>
+                                <form string="Return Line">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="product_id"/>
+                                                <field name="sku"/>
+                                            </group>
+                                            <group>
+                                                <field name="quantity"/>
+                                                <field name="reason"/>
+                                            </group>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
