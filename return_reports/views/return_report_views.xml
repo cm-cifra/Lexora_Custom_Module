@@ -1,5 +1,5 @@
 <odoo>
-    <!-- Tree View for Return Report -->
+    <!-- Tree View -->
     <record id="view_return_report_tree" model="ir.ui.view">
         <field name="name">return.report.tree</field>
         <field name="model">return.report</field>
@@ -16,76 +16,60 @@
         </field>
     </record>
 
-    <!-- Form View for Return Report -->
-    <record id="view_return_report_form" model="ir.ui.view">
-        <field name="name">return.report.form</field>
-        <field name="model">return.report</field>
-        <field name="arch" type="xml">
-            <form string="Return Report">
-                <header>
-                    <button name="action_confirm" type="object" string="Confirm"
-                            class="btn-primary"
-                            attrs="{'invisible': [('state','!=','draft')]}"/>
-                    <button name="action_done" type="object" string="Mark as Done"
-                            class="btn-success"
-                            attrs="{'invisible': [('state','!=','confirmed')]}"/>
-                    <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,done"/>
-                </header>
-                <sheet>
-                    <group>
-                        <group>
-                            <field name="date"/>
-                            <field name="merchant_id"/>
-                            <field name="po_id"/>
-                            <field name="carrier_id"/>
-                        </group>
-                        <group>
-                            <field name="condition"/>
-                            <field name="return_date"/>
-                            <field name="shipped_date"/>
-                            <field name="note"/>
-                        </group>
-                    </group>
+    <!-- Form View -->
+ <record id="view_return_report_form" model="ir.ui.view">
+    <field name="name">return.report.form</field>
+    <field name="model">return.report</field>
+    <field name="arch" type="xml">
+        <form string="Return Report">
+            <header>
+                <button name="action_confirm"
+                        type="object"
+                        string="Confirm"
+                        class="btn-primary"
+                        modifiers='{"invisible": [["state", "!=", "draft"]]}'/>
+                <button name="action_done"
+                        type="object"
+                        string="Mark as Done"
+                        class="btn-success"
+                        modifiers='{"invisible": [["state", "!=", "confirmed"]]}'/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+            </header>
+            <sheet>
+                <group col="2">
+                    <field name="date"/>
+                    <field name="merchant_id"/>
+                    <field name="po_number"/> <!-- Updated PO field -->
+                    <field name="carrier_id"/>
+                    <field name="condition"/>
+                    <field name="return_date"/>
+                    <field name="shipped_date"/>
+                    <field name="note"/>
+                </group>
 
-                    <notebook>
-                        <page string="Return Lines">
-                            <field name="line_ids" context="{'default_report_id': id}" mode="tree,form">
-                                <tree editable="bottom">
+                <notebook>
+                    <page string="Return Lines">
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="quantity"/>
+                                <field name="reason"/>
+                            </tree>
+                            <form>
+                                <group col="2">
                                     <field name="product_id"/>
-                                    <field name="sku"/>
                                     <field name="quantity"/>
                                     <field name="reason"/>
-                                </tree>
-                            </field>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
-        </field>
-    </record>
+                                </group>
+                            </form>
+                        </field>
+                    </page>
+                </notebook>
+            </sheet>
+        </form>
+    </field>
+</record>
 
-    <!-- Separate Form View for Return Report Line -->
-    <record id="view_return_report_line_form" model="ir.ui.view">
-        <field name="name">return.report.line.form</field>
-        <field name="model">return.report.line</field>
-        <field name="arch" type="xml">
-            <form string="Return Line">
-                <sheet>
-                    <group>
-                        <group>
-                            <field name="product_id"/>
-                            <field name="sku"/>
-                        </group>
-                        <group>
-                            <field name="quantity"/>
-                            <field name="reason"/>
-                        </group>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
 
     <!-- Action + Menu -->
     <record id="action_return_report" model="ir.actions.act_window">
