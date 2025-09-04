@@ -12,6 +12,7 @@
                 <field name="carrier_id"/>
                 <field name="condition"/>
                 <field name="state"/>
+                <field name="x_po"/>
             </tree>
         </field>
     </record>
@@ -22,54 +23,47 @@
         <field name="model">return.report</field>
         <field name="arch" type="xml">
             <form string="Return Report">
-   <header>
-    <!-- Confirm button: disabled unless draft, color changes -->
-    <button name="action_confirm"
-            type="object"
-            string="Confirm"
-            t-att-class="state == 'draft' and 'btn btn-primary' or 'btn btn-secondary'"
-            modifiers='{"disabled": [["state","!=","draft"]]}'
-    />
+                <header>
+                    <!-- Confirm button -->
+                    <button name="action_confirm"
+                            type="object"
+                            string="Confirm"
+                            t-att-class="state == 'draft' and 'btn btn-primary' or 'btn btn-secondary'"
+                            modifiers='{"invisible": [["state","!=","draft"]]}'
+                    />
 
-    <!-- Mark as Done button: disabled unless confirmed, color changes -->
-    <button name="action_done"
-            type="object"
-            string="Mark as Done"
-            t-att-class="state == 'confirmed' and 'btn btn-success' or 'btn btn-secondary'"
-            modifiers='{"disabled": [["state","!=","confirmed"]]}'
-    />
+                    <!-- Mark as Done button -->
+                    <button name="action_done"
+                            type="object"
+                            string="Mark as Done"
+                            t-att-class="state == 'confirmed' and 'btn btn-success' or 'btn btn-secondary'"
+                            modifiers='{"invisible": [["state","!=","confirmed"]]}'
+                    />
 
-    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
-</header>
-
-
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                </header>
 
                 <sheet>
-                     
-                        
-                      <group>
-    <!-- Two-column layout for most fields -->
-    <group col="2">
-        <field name="date"/>
-        <field name="merchant_id"/>
-        <field name="po_id"/>
-        <field name="x_po"/>
-        <field name="carrier_id"/>
-        <field name="condition"/>
-     
-    </group>
+                    <group>
+                        <!-- Two-column layout -->
+                        <group col="2">
+                            <field name="date"/>
+                            <field name="merchant_id"/>
+                            <field name="po_id"/>
+                            <field name="x_po" readonly="1"/>
+                            <field name="carrier_id"/>
+                            <field name="condition"/>
+                        </group>
 
-    <!-- Full-width field for note -->
-    <group>
-           <field name="return_date"/>
-        <field name="shipped_date"/>
-        <field name="prod_sku"/>
-        <field name="note"/>
-    </group>
-</group>
+                        <!-- Full-width fields -->
+                        <group>
+                            <field name="return_date"/>
+                            <field name="shipped_date"/>
+                            <field name="prod_sku"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
 
-                     
-             
                     <notebook>
                         <page string="Return Lines">
                             <field name="line_ids">
@@ -88,8 +82,11 @@
                             </field>
                         </page>
                     </notebook>
-                </sheet>  <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
+                </sheet>
+
+                <!-- Chatter -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
                     <field name="message_ids" widget="mail_thread"/>
                 </div>
             </form>
