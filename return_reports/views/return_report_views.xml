@@ -22,11 +22,26 @@
         <field name="model">return.report</field>
         <field name="arch" type="xml">
             <form string="Return Report">
-                <header>
-                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary" modifiers='{"invisible": [["state", "!=", "draft"]]}'/>
-                    <button name="action_done" type="object" string="Mark as Done" class="btn-success" modifiers='{"invisible": [["state", "!=", "confirmed"]]}'/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
-                </header>
+            <header>
+    <!-- Confirm button: clickable only in draft -->
+    <button name="action_confirm"
+            type="object"
+            string="Confirm"
+            class="btn-primary"
+            attrs="{'readonly': [('state','!=','draft')]}"
+    />
+
+    <!-- Mark as Done button: clickable only in confirmed -->
+    <button name="action_done"
+            type="object"
+            string="Mark as Done"
+            class="btn-success"
+            attrs="{'readonly': [('state','!=','confirmed')]}"
+    />
+
+    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+</header>
+
                 <sheet>
                      
                         
