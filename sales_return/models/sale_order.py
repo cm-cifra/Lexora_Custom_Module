@@ -21,7 +21,19 @@ class SaleOrder(models.Model):
         store=True
     )
 
-    @api.depends('order_state')  # <-- depends on your new field
+    # 🔹 New custom fields
+    x_return_date = fields.Date(string="Return Date")
+    x_condition = fields.Selection(
+        selection=[
+            ('new', 'New'),
+            ('used', 'Used'),
+            ('damaged', 'Damaged'),
+        ],
+        string="Condition"
+    )
+    product_sku = fields.Char(string="Product SKU")
+
+    @api.depends('order_state')
     def _compute_is_return_order(self):
         for order in self:
             order.is_return_order = order.order_state in ['return_initiated', 'returned']
