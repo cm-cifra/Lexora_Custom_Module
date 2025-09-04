@@ -3,9 +3,10 @@ from odoo import models, fields, api
 class ReturnReport(models.Model):
     _name = 'return.report'
     _description = 'Return Report'
+    _inherit = ['mail.thread', 'mail.activity.mixin']  # add chatter
 
-    date = fields.Date(string="Return Date", default=fields.Date.context_today)
-    merchant_id = fields.Many2one('res.partner', string="Merchant")
+    date = fields.Date(string="Return Date", default=fields.Date.context_today, tracking=True)
+    merchant_id = fields.Many2one('res.partner', string="Merchant", tracking=True)
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
@@ -14,10 +15,9 @@ class ReturnReport(models.Model):
     condition = fields.Selection([
         ('good', 'Good'),
         ('damaged', 'Damaged')
-    ], string="Condition", default='good')
+    ], string="Condition", default='good', tracking=True)
 
     return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
-
     shipped_date = fields.Datetime(
         string="Shipped Date",
         compute="_compute_shipped_date",
@@ -33,18 +33,29 @@ class ReturnReport(models.Model):
         ('done', 'Done')
     ], string="Status", default='draft', tracking=True)
 
-    @api.depends('po_id')
+    sale_order_id = fields.Many2one(
+        'sale.order',
+        string='Sale Order',
+        compute='_compute_sale_order',
+        store=False
+    )
+
+    @api.depends('po_id', 'x_po')
     def _compute_shipped_date(self):
         for rec in self:
             rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
-    def action_confirm(self):
+    @api.depends('x_po')
+    def _compute_sale_order(self):
+        SaleOrder = self.env['sale.order']
         for rec in self:
-            rec.state = 'confirmed'
+            rec.sale_order_id = SaleOrder.search([('purchase_order','=',rec.x_po)], limit=1)
+
+    def action_confirm(self):
+        self.state = 'confirmed'
 
     def action_done(self):
-        for rec in self:
-            rec.state = 'done'
+        self.state = 'done'
 
 
 class ReturnReportLine(models.Model):
