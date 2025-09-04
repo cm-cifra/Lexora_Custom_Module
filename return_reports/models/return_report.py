@@ -49,13 +49,27 @@ class ReturnReport(models.Model):
     def _compute_sale_order(self):
         SaleOrder = self.env['sale.order']
         for rec in self:
-            rec.sale_order_id = SaleOrder.search([('purchase_order','=',rec.x_po)], limit=1)
+            rec.sale_order_id = SaleOrder.search([('purchase_order', '=', rec.x_po)], limit=1)
 
     def action_confirm(self):
         self.state = 'confirmed'
 
     def action_done(self):
         self.state = 'done'
+
+    # New method for "Open Sale Order" button
+    def action_open_sale_order(self):
+        self.ensure_one()
+        if self.sale_order_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': 'Sale Order',
+                'res_model': 'sale.order',
+                'view_mode': 'form',
+                'res_id': self.sale_order_id.id,
+                'target': 'current',
+            }
+        return False
 
 
 class ReturnReportLine(models.Model):
@@ -66,3 +80,4 @@ class ReturnReportLine(models.Model):
     product_id = fields.Many2one('product.product', string="Product", required=True)
     quantity = fields.Float(string="Quantity", default=1.0)
     reason = fields.Text(string="Reason")
+``
