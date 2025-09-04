@@ -28,7 +28,7 @@
             type="object"
             string="Confirm"
             class="btn-primary"
-            attrs="{'readonly': [('state','!=','draft')]}"
+            modifiers='{"disabled": [["state","!=","draft"]]}'
     />
 
     <!-- Mark as Done button: clickable only in confirmed -->
@@ -36,11 +36,12 @@
             type="object"
             string="Mark as Done"
             class="btn-success"
-            attrs="{'readonly': [('state','!=','confirmed')]}"
+            modifiers='{"disabled": [["state","!=","confirmed"]]}'
     />
 
     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
 </header>
+
 
                 <sheet>
                      
