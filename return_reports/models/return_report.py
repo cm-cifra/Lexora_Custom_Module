@@ -39,10 +39,12 @@ class ReturnReport(models.Model):
             rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
     def action_confirm(self):
-        self.state = 'confirmed'
+        for rec in self:
+            rec.state = 'confirmed'
 
     def action_done(self):
-        self.state = 'done'
+        for rec in self:
+            rec.state = 'done'
 
 
 class ReturnReportLine(models.Model):
