@@ -3,6 +3,7 @@
     <record id="view_sale_order_return_tree" model="ir.ui.view">
         <field name="name">sale.order.return.tree</field>
         <field name="model">sale.order</field>
+        <field name="priority">10</field>
         <field name="arch" type="xml">
             <tree string="Return Orders">
                 <field name="company_id" invisible="1"/>
@@ -18,11 +19,11 @@
         </field>
     </record>
 
-    <!-- Custom form view for return orders -->
+    <!-- Form view when opening a record -->
     <record id="view_sale_order_return_form" model="ir.ui.view">
         <field name="name">sale.order.return.form</field>
         <field name="model">sale.order</field>
-        <field name="priority">20</field>
+        <field name="priority">10</field>
         <field name="arch" type="xml">
             <form string="Return Order">
                 <sheet>
@@ -42,11 +43,11 @@
         </field>
     </record>
 
-    <!-- Custom form view for "Add Return Order" (Create) -->
+    <!-- Custom add form when clicking Create -->
     <record id="view_sale_order_return_add_form" model="ir.ui.view">
         <field name="name">sale.order.return.add.form</field>
         <field name="model">sale.order</field>
-        <field name="priority">30</field>
+        <field name="priority">5</field> <!-- Higher priority than default -->
         <field name="arch" type="xml">
             <form string="Add Return Order">
                 <sheet>
@@ -72,13 +73,12 @@
         <field name="view_mode">tree,form</field>
         <field name="views" eval="[
             (ref('view_sale_order_return_tree'), 'tree'),
-            (ref('view_sale_order_return_form'), 'form'),
-            (ref('view_sale_order_return_add_form'), 'form')
+            (ref('view_sale_order_return_form'), 'form')
         ]"/>
         <field name="context">{'default_order_state': 'return_initiated'}</field>
     </record>
 
-    <!-- Menu -->
+    <!-- Separate menu just for returns -->
     <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
     <menuitem id="menu_sale_order_return_list"
               name="Return Orders List"
