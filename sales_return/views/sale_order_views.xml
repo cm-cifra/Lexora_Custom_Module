@@ -8,7 +8,7 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date_order"/>
-                <field name="state"/>
+                <field name="order_state"/>
                 <field name="is_return_order"/>
             </tree>
         </field>
@@ -19,7 +19,7 @@
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain">[('state', 'in', ['return_initiated', 'returned'])]</field>
+        <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
     </record>
 
     <!-- Top-level menu item for the app -->
