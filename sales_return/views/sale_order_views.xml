@@ -1,10 +1,10 @@
 <odoo>
-    <!-- Tree view for all sale orders -->
-    <record id="view_sale_order_tree_all" model="ir.ui.view">
-        <field name="name">sale.order.tree.all</field>
+    <!-- Tree view for return orders -->
+    <record id="view_sale_order_return_tree" model="ir.ui.view">
+        <field name="name">sale.order.return.tree</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <tree string="All Sale Orders">
+            <tree string="Return Orders">
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="company_id"/>
@@ -15,12 +15,12 @@
         </field>
     </record>
 
-    <!-- Form view for all sale orders -->
-    <record id="view_sale_order_form_all" model="ir.ui.view">
-        <field name="name">sale.order.form.all</field>
+    <!-- Form view for return orders -->
+    <record id="view_sale_order_return_form" model="ir.ui.view">
+        <field name="name">sale.order.return.form</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <form string="Sale Order">
+            <form string="Return Order">
                 <sheet>
                     <group>
                         <field name="name"/>
@@ -47,24 +47,24 @@
         </field>
     </record>
 
-    <!-- Action to display all sale orders -->
-    <record id="action_sale_order_all" model="ir.actions.act_window">
-        <field name="name">All Sale Orders</field>
+    <!-- Action to display only return orders -->
+    <record id="action_sale_order_return" model="ir.actions.act_window">
+        <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_sale_order_tree_all"/>
-        <!-- No domain to display all records -->
+        <field name="view_id" ref="view_sale_order_return_tree"/>
+        <field name="domain">[('state', 'in', ['return_initiated', 'returned'])]</field>
     </record>
 
-    <!-- Top-level menu -->
-    <menuitem id="menu_sale_order_root"
-              name="Sale Orders"
+    <!-- Top-level menu for the module -->
+    <menuitem id="menu_sale_order_return_root"
+              name="Return Orders"
               sequence="100"/>
 
     <!-- Submenu linking to the action -->
-    <menuitem id="menu_sale_order_list"
-              name="All Sale Orders"
-              parent="menu_sale_order_root"
-              action="action_sale_order_all"
+    <menuitem id="menu_sale_order_return_list"
+              name="Return Orders List"
+              parent="menu_sale_order_return_root"
+              action="action_sale_order_return"
               sequence="10"/>
 </odoo>
