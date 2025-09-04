@@ -6,8 +6,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="id"/>
-                <field name="return_id"/>
-                <field name="date"/>
+                <field name="return_id"/> 
                 <field name="merchant_id"/>
                 <field name="po_id"/>
                 <field name="carrier_id"/>
