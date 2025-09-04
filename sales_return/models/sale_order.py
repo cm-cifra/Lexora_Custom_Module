@@ -4,7 +4,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     order_state = fields.Selection(
-        selection=[
+        [
             ('draft', 'Draft'),
             ('sent', 'Quotation Sent'),
             ('sale', 'Sales Order'),
@@ -12,26 +12,22 @@ class SaleOrder(models.Model):
             ('returned', 'Returned'),
         ],
         string="Order State",
-        default='draft'
+        default='draft',
+        tracking=True,
     )
+
+    x_return_date = fields.Date(string="Return Date")
+    x_condition = fields.Selection(
+        [('new', 'New'), ('used', 'Used'), ('damaged', 'Damaged')],
+        string="Condition"
+    )
+    product_sku = fields.Char(string="Product SKU")
 
     is_return_order = fields.Boolean(
         string="Is Return Order",
         compute="_compute_is_return_order",
         store=True
     )
-
-    # 🔹 New custom fields
-    x_return_date = fields.Date(string="Return Date")
-    x_condition = fields.Selection(
-        selection=[
-            ('new', 'New'),
-            ('used', 'Used'),
-            ('damaged', 'Damaged'),
-        ],
-        string="Condition"
-    )
-    product_sku = fields.Char(string="Product SKU")
 
     @api.depends('order_state')
     def _compute_is_return_order(self):
