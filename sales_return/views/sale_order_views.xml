@@ -5,7 +5,9 @@
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
             <tree string="Return Orders" multi_edit="1">
+                <!-- Keep company_id hidden (used for partner domain) -->
                 <field name="company_id" invisible="1"/>
+
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="date_order"/>
@@ -26,6 +28,7 @@
             <form string="Return Order">
                 <sheet>
                     <group>
+                        <!-- Keep company_id hidden -->
                         <field name="company_id" invisible="1"/>
                         <field name="name"/>
                         <field name="partner_id"/>
@@ -51,14 +54,10 @@
             (ref('view_sale_order_return_tree'), 'tree'),
             (ref('view_sale_order_return_form'), 'form')
         ]"/>
-        <!-- make sure default view is tree -->
-        <field name="view_id" ref="view_sale_order_return_tree"/>
     </record>
 
     <!-- Menu items -->
-    <menuitem id="menu_sale_order_return_root"
-              name="Return Orders"
-              sequence="100"/>
+    <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
     <menuitem id="menu_sale_order_return_list"
               name="Return Orders List"
               parent="menu_sale_order_return_root"
