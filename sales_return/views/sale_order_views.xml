@@ -20,7 +20,7 @@
         </field>
     </record>
 
-    <!-- Form view for return orders -->
+    <!-- Custom form view for return orders -->
     <record id="view_sale_order_return_form" model="ir.ui.view">
         <field name="name">sale.order.return.form</field>
         <field name="model">sale.order</field>
@@ -28,7 +28,7 @@
             <form string="Return Order">
                 <sheet>
                     <group>
-                        <!-- Keep company_id on the form too -->
+                        <!-- Keep company_id hidden -->
                         <field name="company_id" invisible="1"/>
                         <field name="name"/>
                         <field name="partner_id"/>
@@ -48,14 +48,23 @@
     <record id="action_sale_order_return" model="ir.actions.act_window">
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
-        <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_sale_order_return_tree"/>
         <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
+        <field name="view_mode">tree,form</field>
+        <field name="views" eval="[
+            (ref('view_sale_order_return_tree'), 'tree'),
+            (ref('view_sale_order_return_form'), 'form')
+        ]"/>
     </record>
 
-    <!-- Menu -->
+    <!-- Menu items -->
     <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
-    <menuitem id="menu_sale_order_return_list" name="Return Orders List" parent="menu_sale_order_return_root" action="action_sale_order_return" sequence="10"/>
+    <menuitem id="menu_sale_order_return_list"
+              name="Return Orders List"
+              parent="menu_sale_order_return_root"
+              action="action_sale_order_return"
+              sequence="10"/>
+
+    <!-- Server action to open wizard from list view -->
     <record id="sale_order_return_tree_action_server" model="ir.actions.server">
         <field name="name">Open Return Wizard</field>
         <field name="model_id" ref="sale.model_sale_order"/>
@@ -69,9 +78,7 @@
                 "res_model": "sale.return.wizard",
                 "view_mode": "form",
                 "target": "new",
-                "context": {
-                    "default_order_ids": active_ids,
-                },
+                "context": {"default_order_ids": active_ids},
             }
         </field>
     </record>
