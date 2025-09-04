@@ -1,16 +1,18 @@
 from odoo import models, fields, api
+from odoo.exceptions import UserError
+from datetime import datetime
 
 class ReturnReport(models.Model):
     _name = 'return.report'
     _description = 'Return Report'
-    _inherit = ['mail.thread', 'mail.activity.mixin']  # <-- enable chatter
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     merchant_id = fields.Many2one('res.partner', string="Merchant")
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
-    x_po = fields.Char(string='Po #')
+    x_po = fields.Char(string='Return Number', readonly=True)  # auto-generated after confirm
     prod_sku = fields.Char(string='Sku')
     condition = fields.Selection([
         ('good', 'Good'),
@@ -41,10 +43,21 @@ class ReturnReport(models.Model):
 
     def action_confirm(self):
         for rec in self:
+            if rec.state != 'draft':
+                raise UserError("You can only confirm a draft return report.")
+
+            # Generate RETURN number if not already generated
+            if not rec.x_po:
+                date_str = fields.Date.today().strftime('%Y/%m')
+                seq_number = self.env['ir.sequence'].next_by_code('return.report') or '001'
+                rec.x_po = f'RETURN/{date_str}/{seq_number.zfill(4)}'
+
             rec.state = 'confirmed'
 
     def action_done(self):
         for rec in self:
+            if rec.state != 'confirmed':
+                raise UserError("You can only mark confirmed reports as done.")
             rec.state = 'done'
 
 
