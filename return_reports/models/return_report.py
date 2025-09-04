@@ -4,7 +4,7 @@ from odoo import models, fields, api
 class ReturnReport(models.Model):
     _name = 'return.report'
     _description = 'Return Report'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin']  # optional: adds chatter
 
     date = fields.Date(
         string="Report Date",
@@ -25,12 +25,14 @@ class ReturnReport(models.Model):
         'delivery.carrier',
         string="Carrier",
     )
+
     condition = fields.Selection(
         [('good', 'Good'),
          ('damaged', 'Damaged')],
         string="Condition",
         default='good',
     )
+
     return_date = fields.Date(
         string="Return Date",
         default=fields.Date.context_today,
@@ -91,7 +93,7 @@ class ReturnReportLine(models.Model):
         string="SKU",
         compute="_compute_sku",
         store=True,
-        readonly=False,  # Allow editing manually if needed
+        readonly=True,
     )
     quantity = fields.Float(
         string="Quantity",
@@ -108,4 +110,4 @@ class ReturnReportLine(models.Model):
     @api.depends('product_id')
     def _compute_sku(self):
         for line in self:
-            line.sku = line.product_id.default_code or ''
+            line.sku = line.product_id.default_code or False
