@@ -1,13 +1,13 @@
 <odoo>
-    <!-- Tree view for return orders -->
-    <record id="view_sale_order_return_tree" model="ir.ui.view">
-        <field name="name">sale.order.return.tree</field>
+    <!-- Tree view for all sale orders -->
+    <record id="view_sale_order_tree_all" model="ir.ui.view">
+        <field name="name">sale.order.tree.all</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <tree string="Return Orders">
+            <tree string="All Sale Orders">
                 <field name="name"/>
-                <field name="company_id"/> <!-- Add company_id for partner domain -->
                 <field name="partner_id"/>
+                <field name="company_id"/>
                 <field name="date_order"/>
                 <field name="state"/>
                 <field name="is_return_order"/>
@@ -15,17 +15,17 @@
         </field>
     </record>
 
-    <!-- Form view for return orders -->
-    <record id="view_sale_order_return_form" model="ir.ui.view">
-        <field name="name">sale.order.return.form</field>
+    <!-- Form view for all sale orders -->
+    <record id="view_sale_order_form_all" model="ir.ui.view">
+        <field name="name">sale.order.form.all</field>
         <field name="model">sale.order</field>
         <field name="arch" type="xml">
-            <form string="Return Order">
+            <form string="Sale Order">
                 <sheet>
                     <group>
                         <field name="name"/>
-                        <field name="company_id"/> <!-- Add company_id for partner domain -->
                         <field name="partner_id"/>
+                        <field name="company_id"/>
                         <field name="date_order"/>
                         <field name="state"/>
                         <field name="is_return_order"/>
@@ -47,24 +47,24 @@
         </field>
     </record>
 
-    <!-- Action to display return orders -->
-    <record id="action_sale_order_return" model="ir.actions.act_window">
-        <field name="name">Return Orders</field>
+    <!-- Action to display all sale orders -->
+    <record id="action_sale_order_all" model="ir.actions.act_window">
+        <field name="name">All Sale Orders</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_sale_order_return_tree"/>
-        <field name="domain">[('state', 'in', ['return_initiated', 'returned'])]</field>
+        <field name="view_id" ref="view_sale_order_tree_all"/>
+        <!-- No domain to display all records -->
     </record>
 
-    <!-- Top-level menu item for the app -->
-    <menuitem id="menu_sale_order_return_root"
-              name="Return Orders"
+    <!-- Top-level menu -->
+    <menuitem id="menu_sale_order_root"
+              name="Sale Orders"
               sequence="100"/>
 
     <!-- Submenu linking to the action -->
-    <menuitem id="menu_sale_order_return_list"
-              name="Return Orders List"
-              parent="menu_sale_order_return_root"
-              action="action_sale_order_return"
+    <menuitem id="menu_sale_order_list"
+              name="All Sale Orders"
+              parent="menu_sale_order_root"
+              action="action_sale_order_all"
               sequence="10"/>
 </odoo>
