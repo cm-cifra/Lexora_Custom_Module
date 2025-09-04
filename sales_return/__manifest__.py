@@ -10,6 +10,7 @@
     'security/ir.model.access.csv',
     'security/sale_order_returns_security.xml',
     'views/sale_order_views.xml',
+     'views/sale_return_wizard_views.xml',
 ],
 
     "installable": True,
