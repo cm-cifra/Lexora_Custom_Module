@@ -49,16 +49,17 @@
                         </group>
                     </group>
 
+                    <!-- Notebook with Return Lines -->
                     <notebook>
                         <page string="Return Lines">
-                            <field name="line_ids">
+                            <field name="line_ids" mode="tree,form" context="{'default_report_id': active_id}">
                                 <tree editable="bottom">
                                     <field name="product_id"/>
                                     <field name="sku"/>
                                     <field name="quantity"/>
                                     <field name="reason"/>
                                 </tree>
-                                <form>
+                                <form string="Return Line">
                                     <group>
                                         <group>
                                             <field name="product_id"/>
