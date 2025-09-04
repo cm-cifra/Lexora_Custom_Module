@@ -36,23 +36,19 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
                 </header>
                 <sheet>
-                             <group>
+                   <group>
         <!-- Two-column layout inside this group -->
         <group col="2">
-            <field name="date"/>
-            <field name="merchant_id"/>
-            <field name="po_id"/>
-            <field name="x_po"/>
-            <field name="carrier_id"/>
-            <field name="condition"/>
-            <field name="return_date"/>
-            <field name="shipped_date"/>
-            <field name="prod_sku"/>
-        </group>
-        <!-- Full-width field like note -->
-        <field name="note"/>
-    </group>
-
+                        <field name="date"/>
+                        <field name="merchant_id"/>
+                        <field name="po_id"/>           <field name="x_po"/>
+                        <field name="carrier_id"/>
+                        <field name="condition"/>
+                        <field name="return_date"/>
+                        <field name="shipped_date"/>           <field name="prod_sku"/>
+                        
+                    </group>  <field name="note"/>
+     </group>     
                     <notebook>
                         <page string="Return Lines">
                             <field name="line_ids">
