@@ -37,12 +37,10 @@ class ReturnReport(models.Model):
             rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
     def action_confirm(self):
-        for rec in self:
-            rec.state = 'confirmed'
+        self.write({'state': 'confirmed'})
 
     def action_done(self):
-        for rec in self:
-            rec.state = 'done'
+        self.write({'state': 'done'})
 
 
 class ReturnReportLine(models.Model):
@@ -51,19 +49,6 @@ class ReturnReportLine(models.Model):
 
     report_id = fields.Many2one('return.report', string="Return Report", ondelete='cascade')
     product_id = fields.Many2one('product.product', string="Product")
-    sku = fields.Char(string="SKU")
+    sku = fields.Char(string="SKU", related="product_id.default_code", store=True, readonly=True)
     quantity = fields.Float(string="Quantity", default=1.0)
     reason = fields.Text(string="Reason")
-
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        for rec in self:
-            rec.sku = rec.product_id.default_code if rec.product_id else False
-
-    @api.onchange('sku')
-    def _onchange_sku(self):
-        """ If user enters SKU directly, auto-select product. """
-        for rec in self:
-            if rec.sku:
-                product = self.env['product.product'].search([('default_code', '=', rec.sku)], limit=1)
-                rec.product_id = product if product else False
