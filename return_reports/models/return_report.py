@@ -6,7 +6,6 @@ class ReturnReport(models.Model):
 
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     merchant_id = fields.Many2one('res.partner', string="Merchant")
-
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
@@ -51,6 +50,20 @@ class ReturnReportLine(models.Model):
     _description = 'Return Report Line'
 
     report_id = fields.Many2one('return.report', string="Return Report", ondelete='cascade')
-    product_id = fields.Many2one('product.product', string="Product", required=True)
+    product_id = fields.Many2one('product.product', string="Product")
+    sku = fields.Char(string="SKU")
     quantity = fields.Float(string="Quantity", default=1.0)
     reason = fields.Text(string="Reason")
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        for rec in self:
+            rec.sku = rec.product_id.default_code if rec.product_id else False
+
+    @api.onchange('sku')
+    def _onchange_sku(self):
+        """ If user enters SKU directly, auto-select product. """
+        for rec in self:
+            if rec.sku:
+                product = self.env['product.product'].search([('default_code', '=', rec.sku)], limit=1)
+                rec.product_id = product if product else False
