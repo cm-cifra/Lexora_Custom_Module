@@ -46,18 +46,18 @@
                 <sheet>
                     <group>
                         <!-- Two-column layout -->
-                        <group col="2">
-                            <field name="date"/>
+                        <group col="2">   
+                            <field name="return_id" readonly="1"/>
+                                <field name="x_po" />   
+                           
                             <field name="merchant_id"/>
-                            <field name="po_id"/>
-                            <field name="x_po" readonly="1"/>   
-                                <field name="return_id" readonly="1"/>
+                            <field name="po_id"/> 
                             <field name="carrier_id"/>
                             <field name="condition"/>
                         </group>
 
                         <!-- Full-width fields -->
-                        <group>
+                        <group>  
                             <field name="return_date"/>
                             <field name="shipped_date"/>
                             <field name="prod_sku"/>
