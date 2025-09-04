@@ -21,27 +21,56 @@
 
     <!-- Form view when opening a record -->
     <record id="view_sale_order_return_form" model="ir.ui.view">
-        <field name="name">sale.order.return.form</field>
-        <field name="model">sale.order</field>
-        <field name="priority">10</field>
-        <field name="arch" type="xml">
-            <form string="Return Order">
-                <sheet>
-                    <group>
-                        <field name="company_id" invisible="1"/>
-                        <field name="name"/>
-                        <field name="partner_id"/>
-                        <field name="date_order"/>
-                        <field name="order_state"/>
-                        <field name="x_return_date"/>
-                        <field name="x_condition"/>
-                        <field name="product_sku"/>
-                        <field name="is_return_order"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
+    <field name="name">sale.order.return.form</field>
+    <field name="model">sale.order</field>
+    <field name="priority">10</field>
+    <field name="arch" type="xml">
+        <form string="Return Order">
+            <sheet>
+                <group>
+                    <field name="company_id" invisible="1"/>
+                    <field name="name"/>
+                    <field name="partner_id"/>
+                    <field name="date_order"/>
+                    <field name="order_state"/>
+                    <field name="x_return_date"/>
+                    <field name="x_condition"/>
+                    <field name="product_sku"/>
+                    <field name="is_return_order"/>
+                </group>
+
+                <!-- Notebook with Order Lines -->
+                <notebook>
+                    <page string="Order Lines">
+                        <field name="order_line">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="product_uom_qty"/>
+                                <field name="price_unit"/>
+                                <field name="price_subtotal"/>
+                            </tree>
+                            <form>
+                                <group>
+                                    <field name="product_id"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="price_unit"/>
+                                    <field name="price_subtotal"/>
+                                </group>
+                            </form>
+                        </field>
+                    </page>
+                </notebook>
+            </sheet>
+
+            <!-- Chatter / Log notes -->
+            <div class="oe_chatter">
+                <field name="message_follower_ids" widget="mail_followers"/>
+                <field name="activity_ids" widget="mail_activity"/>
+                <field name="message_ids" widget="mail_thread"/>
+            </div>
+        </form>
+    </field>
+</record>
 
     <!-- Custom add form when clicking Create -->
     <record id="view_sale_order_return_add_form" model="ir.ui.view">
