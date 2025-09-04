@@ -10,12 +10,12 @@ class SaleOrder(models.Model):
         store=True
     )
 
-    @api.depends('state')
+    @api.depends('order_state')  # <-- FIXED: use order_state not state
     def _compute_is_return_order(self):
         for order in self:
-            order.is_return_order = order.state in ['return_initiated', 'returned']
+            order.is_return_order = order.order_state in ['return_initiated', 'returned']
 
-    # Optional: method to get all return orders
+    # Optional: method to get only return orders
     @api.model
     def get_return_orders(self):
-        return self.search([('state', 'in', ['return_initiated', 'returned'])])
+        return self.search([('order_state', 'in', ['return_initiated', 'returned'])])
