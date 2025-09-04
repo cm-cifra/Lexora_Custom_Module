@@ -43,19 +43,22 @@
         </field>
     </record>
 
-    <!-- Action: link tree and custom form together -->
+    <!-- Action to use BOTH custom tree + form -->
     <record id="action_sale_order_return" model="ir.actions.act_window">
         <field name="name">Return Orders</field>
         <field name="res_model">sale.order</field>
         <field name="domain">[('order_state', 'in', ['return_initiated', 'returned'])]</field>
         <field name="view_mode">tree,form</field>
+        <!-- Explicitly bind custom tree + form -->
         <field name="views" eval="[
             (ref('view_sale_order_return_tree'), 'tree'),
             (ref('view_sale_order_return_form'), 'form')
         ]"/>
+        <!-- Ensure default form is the custom one -->
+        <field name="view_id" ref="view_sale_order_return_form"/>
     </record>
 
-    <!-- Menu items -->
+    <!-- Menu -->
     <menuitem id="menu_sale_order_return_root" name="Return Orders" sequence="100"/>
     <menuitem id="menu_sale_order_return_list"
               name="Return Orders List"
