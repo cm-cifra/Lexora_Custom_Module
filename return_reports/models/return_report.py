@@ -5,24 +5,29 @@ class ReturnReport(models.Model):
     _description = 'Return Report'
     _inherit = ['mail.thread', 'mail.activity.mixin']  # <-- enable chatter
 
-    date = fields.Date(string="Return Date", default=fields.Date.context_today, tracking=True)
-    merchant_id = fields.Many2one('res.partner', string="Merchant", tracking=True)
-    po_id = fields.Many2one('sale.order', string="Sales Order", tracking=True)
-    carrier_id = fields.Many2one('delivery.carrier', string="Carrier", tracking=True)
-    x_po = fields.Char(string='Po #', tracking=True)
-    prod_sku = fields.Char(string='Sku', tracking=True)
+    date = fields.Date(string="Return Date", default=fields.Date.context_today)
+    merchant_id = fields.Many2one('res.partner', string="Merchant")
+
+    po_id = fields.Many2one('sale.order', string="Sales Order")
+    carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
+    x_po = fields.Char(string='Po #')
+    prod_sku = fields.Char(string='Sku')
     condition = fields.Selection([
         ('good', 'Good'),
         ('damaged', 'Damaged')
-    ], string="Condition", default='good', tracking=True)
-    return_date = fields.Date(string="Return Date", default=fields.Date.context_today, tracking=True)
+    ], string="Condition", default='good')
+
+    return_date = fields.Date(string="Return Date", default=fields.Date.context_today)
+
     shipped_date = fields.Datetime(
         string="Shipped Date",
         compute="_compute_shipped_date",
         store=True,
     )
-    note = fields.Text(string="Notes", tracking=True)
+
+    note = fields.Text(string="Notes")
     line_ids = fields.One2many('return.report.line', 'report_id', string="Return Lines")
+
     state = fields.Selection([
         ('draft', 'Draft'),
         ('confirmed', 'Confirmed'),
@@ -41,6 +46,7 @@ class ReturnReport(models.Model):
     def action_done(self):
         for rec in self:
             rec.state = 'done'
+
 
 class ReturnReportLine(models.Model):
     _name = 'return.report.line'
