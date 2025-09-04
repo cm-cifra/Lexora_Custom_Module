@@ -3,6 +3,22 @@ from odoo import models, fields, api
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
+    # Make sure the custom 'order_state' field exists in the model
+    order_state = fields.Selection(
+        selection=[
+            ('po', 'PO'),
+            ('backorder', 'Backorders'),
+            ('process', 'Processed'),
+            ('ship', 'Shipped'),
+            ('cancel', 'Cancelled'),
+            ('return_initiated', 'Return Initiated'),
+            ('returned', 'Returned')
+        ],
+        string='Order State',
+        readonly=False,
+        store=True
+    )
+
     # Boolean field to identify return orders
     is_return_order = fields.Boolean(
         string="Is Return Order",
@@ -10,12 +26,10 @@ class SaleOrder(models.Model):
         store=True
     )
 
-    @api.depends()  # <-- remove 'order_state' to avoid dependency error
+    @api.depends('order_state')
     def _compute_is_return_order(self):
         for order in self:
-            # Use getattr in case the field is not loaded yet
-            order_state = getattr(order, 'order_state', False)
-            order.is_return_order = order_state in ['return_initiated', 'returned']
+            order.is_return_order = order.order_state in ['return_initiated', 'returned']
 
     # Method to get all return orders
     @api.model
