@@ -5,7 +5,7 @@
     "category": "Reporting",
     "author": "chris",
     
-    "depends": ["base"],
+    'depends': ['base', 'sale', 'mail'],  # <-- add 'mail' here
     "data": [
         "security/ir.model.access.csv",
         "views/return_report_views.xml",
