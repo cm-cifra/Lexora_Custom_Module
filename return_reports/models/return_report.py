@@ -7,7 +7,8 @@ class ReturnReport(models.Model):
     date = fields.Date(string="Return Date", default=fields.Date.context_today)
     merchant_id = fields.Many2one('res.partner', string="Merchant")
 
-    po_number = fields.Char(string="PO #")  # Changed from Many2one to Char
+    po_id = fields.Many2one('sale.order', string="Sales Order")  # keep existing
+    po_number = fields.Char(string="PO #")  # new Char field
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
 
     condition = fields.Selection([
@@ -32,10 +33,10 @@ class ReturnReport(models.Model):
         ('done', 'Done')
     ], string="Status", default='draft', tracking=True)
 
-    @api.depends('po_number')
+    @api.depends('po_id')
     def _compute_shipped_date(self):
         for rec in self:
-            rec.shipped_date = False  # No relation now, remove previous computation
+            rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
     def action_confirm(self):
         for rec in self:
