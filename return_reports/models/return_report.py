@@ -9,8 +9,8 @@ class ReturnReport(models.Model):
 
     po_id = fields.Many2one('sale.order', string="Sales Order")
     carrier_id = fields.Many2one('delivery.carrier', string="Carrier")
-    x_po = fields(string='Po #')
-    prod_sku = fields(string='Sku')
+    x_po = fields.Char(string='Po #')
+    prod_sku = fields.Char(string='Sku')
     condition = fields.Selection([
         ('good', 'Good'),
         ('damaged', 'Damaged')
@@ -39,12 +39,10 @@ class ReturnReport(models.Model):
             rec.shipped_date = rec.po_id.x_studio_date_shipped if rec.po_id else False
 
     def action_confirm(self):
-        for rec in self:
-            rec.state = 'confirmed'
+        self.state = 'confirmed'
 
     def action_done(self):
-        for rec in self:
-            rec.state = 'done'
+        self.state = 'done'
 
 
 class ReturnReportLine(models.Model):
