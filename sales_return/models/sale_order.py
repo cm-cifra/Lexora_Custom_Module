@@ -22,7 +22,8 @@ class SaleOrder(models.Model):
         string="Condition"
     )
     product_sku = fields.Char(string="Product SKU")
-
+    archive_link= fields.Char(string="Archive link")
+    notes= fields.Char(string="Notes")
     is_return_order = fields.Boolean(
         string="Is Return Order",
         compute="_compute_is_return_order",
