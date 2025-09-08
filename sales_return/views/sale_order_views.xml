@@ -84,8 +84,7 @@
                         <field name="company_id" invisible="1"/>
                         <field name="partner_id"/>
                         <field name="date_order"/>
-                        <field name="order_state" readonly="1" default="return_initiated"/>
-                        <field name="x_return_date"/>
+                        <field name="order_state" readonly="1" default="return_initiated"/> 
                         <field name="x_condition"/>
                         <field name="archive_link"/>
                               <field name="notes"/>
