@@ -1,18 +1,15 @@
 {
-    "name": "Sale Order Returns",
+    "name": "Return Reports",
     "version": "1.0",
-    "summary": "Manage Sale Orders in Return States",
-    "description": "Custom addon to manage sale orders in 'return_initiated' or 'returned' state",
-    "category": "Sales",
-    "author": "Your Name",
-    "depends": ["sale"],
-    'data': [
-    'security/ir.model.access.csv',
-    'security/sale_order_returns_security.xml',
-    'views/sale_order_views.xml',
-     'views/sale_return_wizard_views.xml',
-],
-
+    "summary": "Custom Return Report Application",
+    "category": "Reporting",
+    "author": "chris",
+    
+    'depends': ['base', 'sale', 'mail'],  # <-- add 'mail' here
+    "data": [
+        "security/ir.model.access.csv",
+        "views/return_report_views.xml",
+    ],
+    "application": True,
     "installable": True,
-    "application": True,   
 }
