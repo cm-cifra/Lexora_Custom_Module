@@ -1,18 +1,23 @@
 <odoo>
     <!-- New Tree View for Quality Checks with Sale -->
-    <record id="view_quality_check_tree_with_sale" model="ir.ui.view">
-        <field name="name">quality.check.tree.with.sale</field>
-        <field name="model">quality.check</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="name"/>
-                <field name="picking_id"/>
-                <field name="sale_id"/>
-                <field name="quality_state"/>
-                <field name="date"/>
-            </tree>
-        </field>
-    </record>
+  <record id="view_quality_check_form_with_sale" model="ir.ui.view">
+    <field name="name">quality.check.form.with.sale</field>
+    <field name="model">quality.check</field>
+    <field name="arch" type="xml">
+        <form>
+            <sheet>
+                <group>
+                    <field name="name"/>
+                    <field name="picking_id"/>
+                    <field name="sale_id" readonly="1"/>
+                    <field name="quality_state"/>
+                    <field name="create_date" readonly="1"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+
 
     <!-- New Form View for Quality Checks with Sale -->
     <record id="view_quality_check_form_with_sale" model="ir.ui.view">
