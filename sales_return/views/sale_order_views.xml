@@ -89,7 +89,10 @@
                         <field name="order_state" readonly="1" default="return_initiated"/>
                         <field name="x_return_date"/>
                         <field name="x_condition"/>
-                        <field name="product_sku"/>
+                        <field name="archive_link"/>
+                              <field name="notes"/>
+                                    <field name="x_studiodate_shipped"/>
+
                     </group>
                 </sheet>
             </form>
