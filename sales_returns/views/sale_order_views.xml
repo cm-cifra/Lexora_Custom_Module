@@ -1,37 +1,48 @@
 <odoo>
-    <!-- Extend Quality Check Tree View -->
-    <record id="view_quality_check_tree_inherit_sale" model="ir.ui.view">
-        <field name="name">quality.check.tree.sale</field>
+    <!-- New Tree View for Quality Checks with Sale -->
+    <record id="view_quality_check_tree_with_sale" model="ir.ui.view">
+        <field name="name">quality.check.tree.with.sale</field>
         <field name="model">quality.check</field>
-        <field name="inherit_id" ref="quality.quality_check_view_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='picking_id']" position="after">
+            <tree>
+                <field name="name"/>
+                <field name="picking_id"/>
                 <field name="sale_id"/>
-            </xpath>
+                <field name="quality_state"/>
+                <field name="date"/>
+            </tree>
         </field>
     </record>
 
-    <!-- Extend Quality Check Form View -->
-    <record id="view_quality_check_form_inherit_sale" model="ir.ui.view">
-        <field name="name">quality.check.form.sale</field>
+    <!-- New Form View for Quality Checks with Sale -->
+    <record id="view_quality_check_form_with_sale" model="ir.ui.view">
+        <field name="name">quality.check.form.with.sale</field>
         <field name="model">quality.check</field>
-        <field name="inherit_id" ref="quality.quality_check_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='picking_id']" position="after">
-                <field name="sale_id" readonly="1"/>
-            </xpath>
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="picking_id"/>
+                        <field name="sale_id" readonly="1"/>
+                        <field name="quality_state"/>
+                        <field name="date"/>
+                    </group>
+                </sheet>
+            </form>
         </field>
     </record>
 
-    <!-- New Action -->
+    <!-- Action -->
     <record id="action_quality_checks_with_sale" model="ir.actions.act_window">
         <field name="name">Quality Checks with Sales</field>
         <field name="res_model">quality.check</field>
         <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_quality_check_tree_with_sale"/>
         <field name="domain">[("sale_id", "!=", False)]</field>
     </record>
 
-    <!-- New Menu -->
+    <!-- Menu -->
     <menuitem id="menu_quality_checks_with_sale"
               name="Quality Checks (Sales)"
               parent="sale.sale_menu_root"
