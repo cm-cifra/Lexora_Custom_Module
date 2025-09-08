@@ -7,6 +7,6 @@
         "security/ir.model.access.csv",
         "views/sale_order_views.xml",
     ],
-    "installable": True,
-    "application": False,
+      "installable": True,
+    "application": True,   # creates its own app icon
 }
