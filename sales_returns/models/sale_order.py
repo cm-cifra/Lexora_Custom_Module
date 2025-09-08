@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import models, fields
 
 class QualityCheck(models.Model):
     _inherit = "quality.check"
