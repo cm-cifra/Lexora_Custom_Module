@@ -1,30 +1,40 @@
 <odoo>
-    <!-- List View -->
-    <record id="view_sale_order_quality_tree" model="ir.ui.view">
-        <field name="name">sale.order.quality.tree</field>
-        <field name="model">sale.order.quality</field>
+    <!-- Extend Quality Check Tree View -->
+    <record id="view_quality_check_tree_inherit_sale" model="ir.ui.view">
+        <field name="name">quality.check.tree.sale</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality.quality_check_view_tree"/>
         <field name="arch" type="xml">
-            <tree>
+            <xpath expr="//field[@name='picking_id']" position="after">
                 <field name="sale_id"/>
-                <field name="partner_id"/>
-                <field name="date_order"/>
-                <field name="amount_total"/>
-                <field name="quality_state"/>
-            </tree>
+            </xpath>
         </field>
     </record>
 
-    <!-- Action -->
-    <record id="action_sale_order_quality" model="ir.actions.act_window">
-        <field name="name">Sales with Quality</field>
-        <field name="res_model">sale.order.quality</field>
-        <field name="view_mode">tree</field>
+    <!-- Extend Quality Check Form View -->
+    <record id="view_quality_check_form_inherit_sale" model="ir.ui.view">
+        <field name="name">quality.check.form.sale</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality.quality_check_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='picking_id']" position="after">
+                <field name="sale_id" readonly="1"/>
+            </xpath>
+        </field>
     </record>
 
-    <!-- Menu Item -->
-    <menuitem id="menu_sale_order_quality_root"
-              name="Sales + Quality"
-              sequence="50"
+    <!-- New Action -->
+    <record id="action_quality_checks_with_sale" model="ir.actions.act_window">
+        <field name="name">Quality Checks with Sales</field>
+        <field name="res_model">quality.check</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[("sale_id", "!=", False)]</field>
+    </record>
+
+    <!-- New Menu -->
+    <menuitem id="menu_quality_checks_with_sale"
+              name="Quality Checks (Sales)"
               parent="sale.sale_menu_root"
-              action="action_sale_order_quality"/>
+              action="action_quality_checks_with_sale"
+              sequence="60"/>
 </odoo>
