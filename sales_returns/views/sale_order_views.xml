@@ -1,0 +1,27 @@
+<odoo>
+    <!-- Extend Sale Order List View -->
+    <record id="view_order_tree_inherit_quality_latest" model="ir.ui.view">
+        <field name="name">sale.order.tree.latest.quality</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="latest_quality_state"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend Sale Order Form View -->
+    <record id="view_order_form_inherit_quality_latest" model="ir.ui.view">
+        <field name="name">sale.order.form.latest.quality</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook/page[@name='order_lines']" position="after">
+                <group>
+                    <field name="latest_quality_state" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

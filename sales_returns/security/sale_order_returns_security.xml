@@ -1,0 +1,16 @@
+<odoo>
+    <!-- Only allow reading orders that are return orders for regular users -->
+    <record id="sale_order_return_rule_user" model="ir.rule">
+        <field name="name">Return Orders Access for Sales</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="domain_force">[('state', 'in', ['return_initiated', 'returned'])]</field>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+    </record>
+
+    <!-- Managers can access all orders -->
+    <record id="sale_order_return_rule_manager" model="ir.rule">
+        <field name="name">Return Orders Access for Managers</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="groups" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+    </record>
+</odoo>

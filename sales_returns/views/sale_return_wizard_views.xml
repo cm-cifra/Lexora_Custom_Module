@@ -1,0 +1,19 @@
+<odoo>
+    <record id="view_sale_return_wizard_form" model="ir.ui.view">
+        <field name="name">sale.return.wizard.form</field>
+        <field name="model">sale.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Update Return Orders">
+                <group>
+                    <field name="return_date"/>
+                    <field name="condition"/>
+                    <field name="product_sku"/>
+                </group>
+                <footer>
+                    <button string="Apply" type="object" name="action_apply" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
