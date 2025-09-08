@@ -14,9 +14,7 @@ class SaleOrder(models.Model):
         string="Order State",
         default='draft',
         tracking=True,
-    )
-
-    x_return_date = fields.Date(string="Return Date")
+    ) 
     x_condition = fields.Selection(
         [('new', 'New'), ('used', 'Used'), ('damaged', 'Damaged')],
         string="Condition"
@@ -34,3 +32,4 @@ class SaleOrder(models.Model):
     def _compute_is_return_order(self):
         for order in self:
             order.is_return_order = order.order_state in ['return_initiated', 'returned']
+
