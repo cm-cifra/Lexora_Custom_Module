@@ -1,18 +1,19 @@
 <odoo>
     <!-- Tree View -->
     <record id="view_quality_check_tree_with_sale" model="ir.ui.view">
-        <field name="name">quality.check.tree.with.sale</field>
-        <field name="model">quality.check</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="name"/>
-                <field name="picking_id"/>
-                <field name="sale_id"/>
-                <field name="quality_state"/>
-                <field name="create_date"/>
-            </tree>
-        </field>
-    </record>
+    <field name="name">quality.check.tree.with.sale</field>
+    <field name="model">quality.check</field>
+    <field name="arch" type="xml">
+        <tree>
+            <field name="name"/>
+            <field name="picking_id"/>
+            <field name="sale_id"/>
+            <field name="quality_state"/>
+            <field name="create_date"/>
+        </tree>
+    </field>
+</record>
+
 
     <!-- Form View -->
     <record id="view_quality_check_form_with_sale" model="ir.ui.view">
