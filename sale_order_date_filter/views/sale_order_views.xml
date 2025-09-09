@@ -1,51 +1,52 @@
 <odoo>
-    <record id="view_sale_order_filter_custom" model="ir.ui.view">
-        <field name="name">sale.order.search.filters.dropdown</field>
-        <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_sale_order_filter"/>
-        <field name="arch" type="xml">
-            <xpath expr="//search" position="inside">
+  <record id="view_sale_order_filter_custom" model="ir.ui.view">
+    <field name="name">sale.order.search.filters.dropdown</field>
+    <field name="model">sale.order</field>
+    <field name="inherit_id" ref="sale.view_order_sale_order_search"/> <!-- ✅ update this -->
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
 
-                <!-- ====================== -->
-                <!-- 🔽 Sort Dropdown -->
-                <!-- ====================== -->
-                <sort string="Sort By">
-                    <field name="x_studio_customer" string="Customer"/>
-                    <field name="effective_date" string="Effective Date"/>
-                    <field name="x_return_date" string="Return Date"/>
-                </sort>
+        <!-- ====================== -->
+        <!-- 🔽 Sort Dropdown -->
+        <!-- ====================== -->
+        <sort string="Sort By">
+          <field name="x_studio_customer" string="Customer"/>
+          <field name="effective_date" string="Effective Date"/>
+          <field name="x_return_date" string="Return Date"/>
+        </sort>
 
-                <!-- ====================== -->
-                <!-- 🔽 Filters -->
-                <!-- ====================== -->
+        <!-- ====================== -->
+        <!-- 🔽 Filters -->
+        <!-- ====================== -->
 
-                <!-- Filter by Customer -->
-                <filter name="filter_customer"
-                        string="Customer"
-                        context="{'group_by': 'x_studio_customer'}"/>
+        <!-- Group by Customer -->
+        <filter name="filter_customer"
+                string="Customer"
+                context="{'group_by': 'x_studio_customer'}"/>
 
-                <!-- Effective Date Ranges -->
+        <!-- Effective Date Ranges -->
         <filter name="this_month_effective"
-        string="Effective This Month"
-        domain="[('effective_date','&gt;=', context_today().replace(day=1)),
-                 ('effective_date','&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)))]"/>
+                string="Effective This Month"
+                domain="[('effective_date','&gt;=', context_today().replace(day=1)),
+                         ('effective_date','&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)))]"/>
 
-<filter name="this_year_effective"
-        string="Effective This Year"
-        domain="[('effective_date','&gt;=', context_today().replace(month=1, day=1)),
-                 ('effective_date','&lt;=', context_today().replace(month=12, day=31))]"/>
+        <filter name="this_year_effective"
+                string="Effective This Year"
+                domain="[('effective_date','&gt;=', context_today().replace(month=1, day=1)),
+                         ('effective_date','&lt;=', context_today().replace(month=12, day=31))]"/>
 
-<filter name="this_month_return"
-        string="Return This Month"
-        domain="[('x_return_date','&gt;=', context_today().replace(day=1)),
-                 ('x_return_date','&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)))]"/>
+        <!-- Return Date Ranges -->
+        <filter name="this_month_return"
+                string="Return This Month"
+                domain="[('x_return_date','&gt;=', context_today().replace(day=1)),
+                         ('x_return_date','&lt;=', (context_today() + relativedelta(months=1, day=1, days=-1)))]"/>
 
-<filter name="this_year_return"
-        string="Return This Year"
-        domain="[('x_return_date','&gt;=', context_today().replace(month=1, day=1)),
-                 ('x_return_date','&lt;=', context_today().replace(month=12, day=31))]"/>
+        <filter name="this_year_return"
+                string="Return This Year"
+                domain="[('x_return_date','&gt;=', context_today().replace(month=1, day=1)),
+                         ('x_return_date','&lt;=', context_today().replace(month=12, day=31))]"/>
 
-            </xpath>
-        </field>
-    </record>
+      </xpath>
+    </field>
+  </record>
 </odoo>
