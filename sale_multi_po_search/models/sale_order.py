@@ -12,8 +12,15 @@ class SaleOrder(models.Model):
             return []
         return [t for t in re.split(r"[,\s;]+", text.strip()) if t]
 
+    def _make_or_domain(self, field, operator, tokens):
+        """Build a properly nested OR domain from tokens."""
+        domain = (field, operator, tokens[0])
+        for token in tokens[1:]:
+            domain = ["|", domain, (field, operator, token)]
+        return domain
+
     def _search(self, domain, offset=0, limit=None, order=None, access_rights_uid=None):
-        """Intercept purchase_order ilike searches and expand into OR tokens."""
+        """Intercept purchase_order ilike/like/= searches and expand into OR tokens."""
         new_domain = []
         for arg in domain:
             if isinstance(arg, (list, tuple)) and len(arg) == 3:
@@ -21,8 +28,7 @@ class SaleOrder(models.Model):
                 if field == "purchase_order" and operator in ("ilike", "like", "=") and value:
                     tokens = self._tokenize(value)
                     if len(tokens) > 1:
-                        conds = [(field, operator, t) for t in tokens]
-                        arg = ["|"] * (len(conds) - 1) + conds
+                        arg = self._make_or_domain(field, operator, tokens)
             new_domain.append(arg)
 
         return super()._search(
