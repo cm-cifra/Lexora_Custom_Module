@@ -14,38 +14,27 @@ class SaleOrder(models.Model):
         return [t for t in re.split(r"[,\s;]+", text.strip()) if t]
 
     def _make_or_domain(self, field, operator, tokens):
-        """Build a properly nested OR domain from tokens."""
-        if not tokens:
-            return []
-        domain = (field, operator, tokens[0])
-        for token in tokens[1:]:
-            domain = ["|", domain, (field, operator, token)]
-        return domain
+        """Return a flat OR domain like ['|','|',cond1,cond2,cond3]."""
+        conds = [(field, operator, t) for t in tokens]
+        if len(conds) > 1:
+            return ["|"] * (len(conds) - 1) + conds
+        return conds
 
     def _search(self, domain, offset=0, limit=None, order=None, access_rights_uid=None):
         """Intercept purchase_order ilike/like/= searches and expand into OR tokens."""
-        expanded_domain = []
+        new_domain = []
         for arg in domain:
             if isinstance(arg, (list, tuple)) and len(arg) == 3:
                 field, operator, value = arg
                 if field == "purchase_order" and operator in ("ilike", "like", "=") and value:
                     tokens = self._tokenize(value)
                     if len(tokens) > 1:
-                        expanded_domain.append(self._make_or_domain(field, operator, tokens))
-                        continue  # skip adding arg itself
-            expanded_domain.append(arg)
-
-        # Now flatten in case nested domains exist
-        final_domain = []
-        for d in expanded_domain:
-            if isinstance(d, list) and d and d[0] == "|":
-                # Already a valid domain, extend it
-                final_domain.extend(d if isinstance(d, list) else [d])
-            else:
-                final_domain.append(d)
+                        new_domain.extend(self._make_or_domain(field, operator, tokens))
+                        continue  # skip appending original arg
+            new_domain.append(arg)
 
         return super()._search(
-            final_domain,
+            new_domain,
             offset=offset,
             limit=limit,
             order=order,
