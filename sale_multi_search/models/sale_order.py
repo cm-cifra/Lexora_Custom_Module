@@ -13,7 +13,7 @@ class SaleOrder(models.Model):
                 if domain:
                     domain = ['|'] + domain
                 # search in client_order_ref (PO) OR in name (SO number)
-                domain.append(('client_order_ref', '=', token))
+                domain.append(('purchase_order', '=', token))
             recs = self.search(domain + args, limit=limit)
         else:
             recs = self.search(args, limit=limit)
