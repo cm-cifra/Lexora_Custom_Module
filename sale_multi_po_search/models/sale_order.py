@@ -12,7 +12,7 @@ class SaleOrder(models.Model):
             return []
         return [t for t in re.split(r"[,\s;]+", text.strip()) if t]
 
-    def _search(self, domain, offset=0, limit=None, order=None, count=False, access_rights_uid=None):
+    def _search(self, domain, offset=0, limit=None, order=None, access_rights_uid=None):
         """Intercept purchase_order ilike searches and expand into OR tokens."""
         new_domain = []
         for arg in domain:
@@ -30,6 +30,5 @@ class SaleOrder(models.Model):
             offset=offset,
             limit=limit,
             order=order,
-            count=count,
             access_rights_uid=access_rights_uid,
         )
