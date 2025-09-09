@@ -7,13 +7,13 @@ class SaleOrder(models.Model):
     purchase_order = fields.Char(string='Purchase Order')
 
     def _tokenize(self, text):
-        """Split by whitespace, comma, semicolon, newline."""
+        """Split by whitespace, comma, semicolon or newline."""
         if not text:
             return []
         return [t for t in re.split(r'[,\s;]+', text.strip()) if t]
 
     @classmethod
-    def _search(cls, args, offset=0, limit=None, order=None, count=False, access_rights_uid=None):
+    def _search(cls, args, offset=0, limit=None, order=None, access_rights_uid=None):
         """
         Intercept search queries on purchase_order field and split multi-token strings.
         """
@@ -28,4 +28,11 @@ class SaleOrder(models.Model):
                         arg = ['|'] * (len(conds) - 1) + conds
             new_args.append(arg)
 
-        return super(SaleOrder, cls)._search(new_args, offset=offset, limit=limit, order=order, count=count, access_rights_uid=access_rights_uid)
+        # Important: call super() without "count"
+        return super(SaleOrder, cls)._search(
+            new_args,
+            offset=offset,
+            limit=limit,
+            order=order,
+            access_rights_uid=access_rights_uid,
+        )
