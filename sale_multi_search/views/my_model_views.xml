@@ -1,36 +1,25 @@
 <odoo>
-    <record id="view_my_model_tree" model="ir.ui.view">
-        <field name="name">my_module.my_model.tree</field>
-        <field name="model">my_module.my_model</field>
+    <!-- Add purchase_order to search view -->
+    <record id="view_sale_order_purchase_order_search" model="ir.ui.view">
+        <field name="name">sale.order.purchase.order.search</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
         <field name="arch" type="xml">
-            <tree>
-                <field name="purchase_order"/>
-            </tree>
-        </field>
-    </record>
-
-    <record id="view_my_model_form" model="ir.ui.view">
-        <field name="name">my_module.my_model.form</field>
-        <field name="model">my_module.my_model</field>
-        <field name="arch" type="xml">
-            <form>
-                <sheet>
-                    <field name="purchase_order"/>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="view_my_model_search" model="ir.ui.view">
-        <field name="name">my_module.my_model.search</field>
-        <field name="model">my_module.my_model</field>
-        <field name="arch" type="xml">
-            <search>
-                <!-- Standard filter -->
-                <field name="purchase_order"/>
-                <!-- Custom button to trigger tokenized search -->
-                <button name="action_search_tokens" string="Search Tokens" type="object" class="oe_highlight"/>
+            <search position="inside">
+                <field name="purchase_order" string="Purchase Order"/>
             </search>
+        </field>
+    </record>
+
+    <!-- Add purchase_order to tree view for visibility -->
+    <record id="view_sale_order_purchase_order_tree" model="ir.ui.view">
+        <field name="name">sale.order.purchase.order.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="inside">
+                <field name="purchase_order"/>
+            </xpath>
         </field>
     </record>
 </odoo>

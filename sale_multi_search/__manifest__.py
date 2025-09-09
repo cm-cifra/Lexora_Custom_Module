@@ -1,12 +1,12 @@
 {
     "name": "Multi Search Sale PO",
-    "version": "17.0.1.0.0",
-    "summary": "Search multiple PO numbers separated by space in Sale Orders",
-    "author": "Your Name",
-    "license": "LGPL-3",
-    "category": "Sales",
-    "depends": ["sale_management"],
-    "data": [],
-    "installable": True,
-    "application": False,
+     'version': '1.0',
+    'summary': 'Custom tokenized search on purchase_order field in Sale Orders',
+    'category': 'Sales',
+    'depends': ['sale'],
+    'data': [
+        'views/sale_order_views.xml',
+    ],
+    'installable': True,
+    'application': False,
 }
