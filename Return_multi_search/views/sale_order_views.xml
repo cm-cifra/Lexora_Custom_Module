@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="stock.view_picking_internal_search"/>
         <field name="arch" type="xml">
             <search position="inside">
-                <field name="purchase_order" string="PO # like"/>
+                <field name="purchase_order" string="Multi PO# Search"/>
             </search>
         </field>
     </record>
@@ -23,3 +23,4 @@
         </field>
     </record>
 </odoo>
+
