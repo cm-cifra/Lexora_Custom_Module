@@ -3,7 +3,7 @@
      'version': '1.1',
     'summary': 'Custom search',
     'category': 'Sales',
-     "depends": ["sale", "stock"],   
+    "depends": ["stock", "purchase"],  
     'data': [
         'views/sale_order_views.xml',
     ],
