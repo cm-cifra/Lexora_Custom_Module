@@ -4,9 +4,7 @@ from odoo import models, fields
 
 class StockPickingPO(models.Model):
     _inherit = 'stock.picking'
-
-    # If purchase_order already exists, remove this line
-    purchase_order = fields.Char(string='Purchase Order')
+ 
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline and return non-empty tokens."""
@@ -34,3 +32,4 @@ class StockPickingPO(models.Model):
             recs = self.search(domain, limit=limit)
             return recs.name_get()
         return super().name_search(name, args=args, operator=operator, limit=limit)
+
