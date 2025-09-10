@@ -1,10 +1,8 @@
-# models/stock_picking.py
 import re
-from odoo import models, fields
+from odoo import models
 
-class StockPickingPO(models.Model):
-    _inherit = 'stock.picking'
- 
+class ReturnsReportPO(models.Model):
+    _inherit = 'returns.report'   # extend returns.report
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline and return non-empty tokens."""
@@ -32,4 +30,3 @@ class StockPickingPO(models.Model):
             recs = self.search(domain, limit=limit)
             return recs.name_get()
         return super().name_search(name, args=args, operator=operator, limit=limit)
-
