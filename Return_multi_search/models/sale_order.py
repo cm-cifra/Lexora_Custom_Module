@@ -1,8 +1,12 @@
+# models/stock_picking.py
 import re
-from odoo import models
+from odoo import models, fields
 
-class ReturnsReportPO(models.Model):
-    _inherit = 'returns.report'   # extend returns.report
+class StockPickingPO(models.Model):
+    _inherit = 'stock.picking'
+
+    # If purchase_order already exists, remove this line
+    purchase_order = fields.Char(string='Purchase Order')
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline and return non-empty tokens."""
