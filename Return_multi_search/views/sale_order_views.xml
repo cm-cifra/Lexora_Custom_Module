@@ -1,9 +1,9 @@
 <odoo>
-    <!-- Add purchase_order to returns.report search view -->
-    <record id="view_returns_report_po_search" model="ir.ui.view">
-        <field name="name">returns.report.purchase.order.search</field>
-        <field name="model">returns.report</field>
-        <field name="inherit_id" ref="your_module.view_returns_report_search"/> <!-- replace with actual base search view -->
+    <!-- Add purchase_order to stock.picking search view -->
+    <record id="view_stock_picking_po_search" model="ir.ui.view">
+        <field name="name">stock.picking.purchase.order.search</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
         <field name="arch" type="xml">
             <search position="inside">
                 <field name="purchase_order" string="PO # like"/>
@@ -11,11 +11,11 @@
         </field>
     </record>
 
-    <!-- Add purchase_order to returns.report tree view -->
-    <record id="view_returns_report_po_tree" model="ir.ui.view">
-        <field name="name">returns.report.purchase.order.tree</field>
-        <field name="model">returns.report</field>
-        <field name="inherit_id" ref="your_module.view_returns_report_tree"/> <!-- replace with actual base tree view -->
+    <!-- Add purchase_order to stock.picking tree view -->
+    <record id="view_stock_picking_po_tree" model="ir.ui.view">
+        <field name="name">stock.picking.purchase.order.tree</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
         <field name="arch" type="xml">
             <xpath expr="//tree" position="inside">
                 <field name="purchase_order"/>
