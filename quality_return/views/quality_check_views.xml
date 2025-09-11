@@ -5,20 +5,21 @@
               name="Quality Checks"
               sequence="50"/>
 
-    <!-- Action -->
-    <record id="action_custom_quality_check" model="ir.actions.act_window">
-        <field name="name">Quality Checks</field>
+    <!-- Action with domain filter -->
+    <record id="action_custom_quality_check_return" model="ir.actions.act_window">
+        <field name="name">Return Quality Checks</field>
         <field name="res_model">quality.check</field>
         <field name="view_mode">tree,form</field>
+        <field name="domain">[("x_location", "like", "WH/IN/RETURN%")]</field>
         <field name="help" type="html">
-            <p>No quality checks found. Create one.</p>
+            <p>No return quality checks found.</p>
         </field>
     </record>
 
-    <!-- Submenu -->
-    <menuitem id="menu_custom_quality_check"
-              name="All Checks"
+    <!-- Submenu for Returns -->
+    <menuitem id="menu_custom_quality_check_return"
+              name="Return Checks"
               parent="menu_custom_quality_root"
-              action="action_custom_quality_check"
+              action="action_custom_quality_check_return"
               sequence="10"/>
 </odoo>
