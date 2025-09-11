@@ -2,14 +2,13 @@
 {
     "name": "Custom Quality Check",
     "version": "17.0.1.0.0",
-    "summary": "Custom model showing Quality Checks",
-    "description": "This module creates a new model and fetches data from quality.check",
-    "author": "chris mark cifra", 
+    "summary": "Display Quality Checks",
+    "description": "This module displays all records from quality.check model in a menu.",
+    "author": "Chris Mark Cifra", 
     "category": "Quality",
-    "depends": ["quality"],  # depends on Quality app
+    "depends": ["quality"],  # required since quality.check comes from Quality module
     "data": [
-        "security/ir.model.access.csv",
-        "views/custom_quality_check_views.xml",
+        "views/quality_check_views.xml",
     ],
     "installable": True,
     "application": True,
