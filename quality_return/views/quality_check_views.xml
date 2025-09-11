@@ -17,7 +17,7 @@
     </record>
 
     <!-- Submenu for Returns -->
-    <menuitem id="menu_custom_quality_check_return"
+    <menuitem id="menu_custom_quality_check_return_menu"
               name="Return Checks"
               parent="menu_custom_quality_root"
               action="action_custom_quality_check_return"
