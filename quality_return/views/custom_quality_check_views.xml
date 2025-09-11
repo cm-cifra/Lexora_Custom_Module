@@ -1,57 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Action to open custom.quality.check -->
-    <record id="action_custom_quality_check" model="ir.actions.act_window">
-        <field name="name">Custom Quality Checks</field>
-        <field name="res_model">custom.quality.check</field>
+    <!-- Menu & Action -->
+    <menuitem id="menu_stock_move_line_root"
+              name="Stock Move Lines"
+              parent="stock.menu_stock_root"
+              sequence="20"/>
+
+    <record id="action_stock_move_line_viewer" model="ir.actions.act_window">
+        <field name="name">Stock Move Lines</field>
+        <field name="res_model">stock.move.line</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <!-- Root App Menu with Action (so it shows as an app icon) -->
-    <menuitem id="menu_custom_quality_root"
-              name="Custom Quality Checks"
-              action="action_custom_quality_check"
-              sequence="50"/>
-
-    <!-- (Optional) Submenu under the root menu -->
-    <menuitem id="menu_custom_quality_check"
-              parent="menu_custom_quality_root"
-              name="All Custom Checks"
-              action="action_custom_quality_check"
-              sequence="1"/>
-
-    <!-- Tree view -->
-    <record id="view_custom_quality_check_tree" model="ir.ui.view">
-        <field name="name">custom.quality.check.tree</field>
-        <field name="model">custom.quality.check</field>
-        <field name="arch" type="xml">
-            <tree>
-                <field name="name"/>
-                <field name="product_id"/>
-                <field name="lot_id"/>
-                <field name="result"/>
-                <field name="check_date"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- Form view -->
-    <record id="view_custom_quality_check_form" model="ir.ui.view">
-        <field name="name">custom.quality.check.form</field>
-        <field name="model">custom.quality.check</field>
-        <field name="arch" type="xml">
-            <form>
-                <sheet>
-                    <group>
-                        <field name="quality_check_id"/>
-                        <field name="name"/>
-                        <field name="product_id"/>
-                        <field name="lot_id"/>
-                        <field name="result"/>
-                        <field name="check_date"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
+    <menuitem id="menu_stock_move_line"
+              name="All Move Lines"
+              parent="menu_stock_move_line_root"
+              action="action_stock_move_line_viewer"/>
 </odoo>

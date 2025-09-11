@@ -6,9 +6,11 @@
     "description": "This module displays all records from quality.check model in a menu.",
     "author": "Chris Mark Cifra", 
     "category": "Quality",
-    "depends": ["quality"],  # required since quality.check comes from Quality module
+    "depends": ["stock"],
     "data": [
-        "views/quality_check_views.xml",
+        "security/security.xml",
+        "security/ir.model.access.csv",
+        "views/custom_quality_check_views.xml",
     ],
     "installable": True,
     "application": True,
