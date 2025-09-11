@@ -8,6 +8,7 @@
     "category": "Quality",
     "depends": ["quality"],  # depends on Quality app
     "data": [
+        "security/ir.model.access.csv",
         "views/custom_quality_check_views.xml",
     ],
     "installable": True,
