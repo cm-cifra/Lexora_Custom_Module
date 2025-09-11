@@ -8,8 +8,8 @@
     "category": "Quality",
     "depends": ["stock"],
     "data": [
-        "security/security.xml",
-        "security/ir.model.access.csv",
+        "security/security.xml",          # group first
+        "security/ir.model.access.csv",   # then access rights
         "views/custom_quality_check_views.xml",
     ],
     "installable": True,
