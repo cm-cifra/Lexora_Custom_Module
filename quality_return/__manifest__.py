@@ -2,13 +2,13 @@
 {
     "name": "Custom Quality Check",
     "version": "17.0.1.0.0",
-    "summary": "Display Quality Checks",
-    "description": "This module displays all records from quality.check model in a menu.",
-    "author": "Your Name", 
+    "summary": "Custom model showing Quality Checks",
+    "description": "This module creates a new model and fetches data from quality.check",
+    "author": "chris mark cifra", 
     "category": "Quality",
-    "depends": ["quality"],  # required since quality.check comes from Quality module
+    "depends": ["quality"],  # depends on Quality app
     "data": [
-        "views/quality_check_views.xml",
+        "views/custom_quality_check_views.xml",
     ],
     "installable": True,
     "application": True,

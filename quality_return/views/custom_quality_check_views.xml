@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Menu -->
+    <menuitem id="menu_custom_quality_root"
+              name="Custom Quality Checks"
+              sequence="50"/>
+
+    <!-- Action -->
+    <record id="action_custom_quality_check" model="ir.actions.act_window">
+        <field name="name">Custom Quality Checks</field>
+        <field name="res_model">custom.quality.check</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Submenu -->
+    <menuitem id="menu_custom_quality_check"
+              name="All Custom Checks"
+              parent="menu_custom_quality_root"
+              action="action_custom_quality_check"
+              sequence="10"/>
+
+    <!-- Tree view -->
+    <record id="view_custom_quality_check_tree" model="ir.ui.view">
+        <field name="name">custom.quality.check.tree</field>
+        <field name="model">custom.quality.check</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <field name="result"/>
+                <field name="check_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_custom_quality_check_form" model="ir.ui.view">
+        <field name="name">custom.quality.check.form</field>
+        <field name="model">custom.quality.check</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="quality_check_id"/>
+                        <field name="name"/>
+                        <field name="product_id"/>
+                        <field name="lot_id"/>
+                        <field name="result"/>
+                        <field name="check_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
