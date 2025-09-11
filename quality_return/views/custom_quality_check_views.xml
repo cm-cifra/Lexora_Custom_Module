@@ -14,12 +14,7 @@
             <tree string="Return Move Lines">
                 <field name="reference"/>
                 <field name="product_id"/>
-                <field name="lot_id"/>
-                <field name="product_uom_id"/>
-                <field name="product_uom_qty"/>
-                <field name="location_id"/>
-                <field name="location_dest_id"/>
-                <field name="state"/>
+               
             </tree>
         </field>
     </record>
