@@ -11,10 +11,33 @@
         <field name="name">Return Move Lines</field>
         <field name="res_model">stock.move.line</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain">[("location_dest_id.complete_name", "like", "WH/IN/RETURN%")]</field>
+        <!-- ✅ Filter by reference starting with WH/IN/RETURN -->
+        <field name="domain">[("reference", "like", "WH/IN/RETURN%")]</field>
         <field name="help" type="html">
             <p>No return stock move lines found.</p>
         </field>
+    </record>
+
+    <!-- Custom Tree View for Return Moves -->
+    <record id="view_stock_move_line_return_tree" model="ir.ui.view">
+        <field name="name">stock.move.line.return.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="arch" type="xml">
+            <tree string="Return Move Lines">
+                <field name="reference"/>
+                <field name="product_id"/>
+                <field name="lot_id"/>
+                <field name="qty_done"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Link custom tree view to action -->
+    <record id="action_stock_move_line_return" model="ir.actions.act_window">
+        <field name="view_id" ref="view_stock_move_line_return_tree"/>
     </record>
 
     <!-- Submenu -->
