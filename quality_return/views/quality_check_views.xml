@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Menu -->
+    <menuitem id="menu_custom_quality_root"
+              name="Quality Checks"
+              parent="quality.menu_quality_root"
+              sequence="50"/>
+
+    <!-- Action -->
+    <record id="action_custom_quality_check" model="ir.actions.act_window">
+        <field name="name">Quality Checks</field>
+        <field name="res_model">quality.check</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p>No quality checks found. Create one.</p>
+        </field>
+    </record>
+
+    <!-- Submenu -->
+    <menuitem id="menu_custom_quality_check"
+              name="All Checks"
+              parent="menu_custom_quality_root"
+              action="action_custom_quality_check"
+              sequence="10"/>
+</odoo>
