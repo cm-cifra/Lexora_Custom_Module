@@ -1,17 +1,17 @@
 <odoo>
-    <!-- Add purchase_order to search view -->
+    <!-- Extend the search view: add Purchase Order filter -->
     <record id="view_sale_order_po_search" model="ir.ui.view">
         <field name="name">sale.order.purchase.order.search</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sales_order_filter"/>
         <field name="arch" type="xml">
-            <search position="inside">
-                <field name="purchase_order" string="PO # like "/>
-            </search>
+            <xpath expr="//search" position="inside">
+                <field name="purchase_order" string="Purchase Order"/>
+            </xpath>
         </field>
     </record>
 
-    <!-- Add purchase_order to tree view for visibility -->
+    <!-- Extend the tree view: show Purchase Order column -->
     <record id="view_sale_order_po_tree" model="ir.ui.view">
         <field name="name">sale.order.purchase.order.tree</field>
         <field name="model">sale.order</field>
