@@ -7,11 +7,11 @@ class SaleOrder(models.Model):
 
     purchase_order = fields.Char(
         string="Purchase Order",
-        search="_search_purchase_order",  # 👈 important
+        search="_search_purchase_order",  # custom search
     )
 
     def _tokenize(self, text):
-        """Split by whitespace, comma, semicolon or newline into tokens."""
+        """Split by whitespace, comma, semicolon, or newline into tokens."""
         if not text:
             return []
         return [t for t in re.split(r"[,\s;]+", text.strip()) if t]
@@ -20,14 +20,16 @@ class SaleOrder(models.Model):
     def _search_purchase_order(self, operator, value):
         """
         Custom search ONLY for purchase_order field.
-        - Supports multiple tokens separated by space/comma/semicolon.
+        - Tokens separated by space/comma/semicolon.
+        - Uses '=' operator to avoid LIKE spillover into other searches.
         - Builds an AND domain (all tokens must match).
         """
         tokens = self._tokenize(value)
         if not tokens:
-            return [('id', '=', 0)]  # match nothing
+            return [("id", "=", 0)]  # match nothing
 
-        conds = [("purchase_order", operator, t) for t in tokens]
+        # Force '=' operator for clean PO search
+        conds = [("purchase_order", "=", t) for t in tokens]
 
         if len(conds) > 1:
             # Build AND domain: all tokens must match
