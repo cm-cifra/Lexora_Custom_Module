@@ -17,45 +17,24 @@ class SaleOrder(models.Model):
     def _search_purchase_order(self, operator, value):
         """
         Custom search ONLY for purchase_order field.
-
-        - Supports multiple tokens separated by space/comma/semicolon.
-        - Returns a domain on 'id' (not on 'purchase_order'), avoiding recursion.
+        Supports multiple tokens separated by space/comma/semicolon.
+        Example: "123 324 132 054" → matches any of those.
         """
         tokens = self._tokenize(value)
         if not tokens:
-            # no tokens → produce a domain that matches nothing
             return [('id', 'in', [])]
 
-        # Normalize operator and decide SQL operator / parameter formatting
+        # Only support '=' and 'ilike' style operators
         op = (operator or '').lower()
-        params = []
-        clauses = []
-
-        if op in ('ilike', 'like'):
-            sql_op = 'ILIKE' if op == 'ilike' else 'LIKE'
-            for t in tokens:
-                clauses.append(f"purchase_order {sql_op} %s")
-                params.append(f"%{t}%")
-        elif op in ('=', '=='):
-            for t in tokens:
-                clauses.append("purchase_order = %s")
-                params.append(t)
+        if op in ('=', '=='):
+            # Exact match on any of the tokens
+            return [('purchase_order', 'in', tokens)]
         else:
-            # fallback: use ILIKE behaviour (friendly for user searches)
+            # For like/ilike → OR conditions
+            or_domain = []
             for t in tokens:
-                clauses.append("purchase_order ILIKE %s")
-                params.append(f"%{t}%")
-
-        # Build and run a safe parametrized SQL query against the sale_order table.
-        # Using self._table prevents hard-coding the table name.
-        where_sql = " OR ".join(clauses)
-        if not where_sql:
-            return [('id', 'in', [])]
-
-        sql = f"SELECT id FROM {self._table} WHERE {where_sql}"
-        self.env.cr.execute(sql, params)
-        rows = self.env.cr.fetchall()
-        ids = [r[0] for r in rows]
-
-        # Return a domain on id — this will not trigger `_search_purchase_order` again.
-        return [('id', 'in', ids)]
+                or_domain.append(('purchase_order', operator, t))
+            if len(or_domain) > 1:
+                # build flat OR: ['|','|', cond1, cond2, cond3]
+                return ['|'] * (len(or_domain) - 1) + or_domain
+            return or_domain
