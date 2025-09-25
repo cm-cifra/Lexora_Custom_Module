@@ -18,7 +18,7 @@ class SaleOrder(models.Model):
         """
         Custom search ONLY for purchase_order field.
         - Supports multiple tokens separated by space/comma/semicolon.
-        - Builds an OR domain so any token can match.
+        - Builds an AND domain (all tokens must match).
         - Does not affect other search fields.
         """
         tokens = self._tokenize(value)
@@ -28,6 +28,9 @@ class SaleOrder(models.Model):
         conds = [("purchase_order", operator, t) for t in tokens]
 
         if len(conds) > 1:
-            # Build flat OR domain: ["|", cond1, cond2, cond3, ...]
-            return ["|"] * (len(conds) - 1) + conds
+            # Build flat AND domain: ["&", cond1, cond2, ...]
+            domain = conds[0]
+            for cond in conds[1:]:
+                domain = ["&", domain, cond]
+            return domain
         return conds
