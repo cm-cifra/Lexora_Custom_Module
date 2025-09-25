@@ -5,7 +5,10 @@ from odoo import models, fields, api
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    purchase_order = fields.Char(string="Purchase Order")
+    purchase_order = fields.Char(
+        string="Purchase Order",
+        search="_search_purchase_order",  # 👈 important
+    )
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline into tokens."""
@@ -19,7 +22,6 @@ class SaleOrder(models.Model):
         Custom search ONLY for purchase_order field.
         - Supports multiple tokens separated by space/comma/semicolon.
         - Builds an AND domain (all tokens must match).
-        - Does not affect other search fields.
         """
         tokens = self._tokenize(value)
         if not tokens:
@@ -28,7 +30,7 @@ class SaleOrder(models.Model):
         conds = [("purchase_order", operator, t) for t in tokens]
 
         if len(conds) > 1:
-            # Build flat AND domain: ["&", cond1, cond2, ...]
+            # Build AND domain: all tokens must match
             domain = conds[0]
             for cond in conds[1:]:
                 domain = ["&", domain, cond]
