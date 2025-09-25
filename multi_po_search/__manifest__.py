@@ -5,7 +5,7 @@
     'category': 'Sales',
     'depends': ['sale'],
     'data': [
-        'views/my_model_views.xml',
+        'views/sale_order_views.xml',
     ],
     'installable': True,
     'application': False,
