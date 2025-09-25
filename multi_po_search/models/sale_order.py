@@ -17,24 +17,17 @@ class SaleOrder(models.Model):
     def _search_purchase_order(self, operator, value):
         """
         Custom search ONLY for purchase_order field.
-        Supports multiple tokens separated by space/comma/semicolon.
-        Example: "123 324 132 054" → matches any of those.
+        - Supports multiple tokens separated by space/comma/semicolon.
+        - Builds an AND domain so all tokens must match.
+        - Does not affect other search fields.
         """
         tokens = self._tokenize(value)
         if not tokens:
-            return [('id', 'in', [])]
+            return [('id', '=', 0)]  # match nothing
 
-        # Only support '=' and 'ilike' style operators
-        op = (operator or '').lower()
-        if op in ('=', '=='):
-            # Exact match on any of the tokens
-            return [('purchase_order', 'in', tokens)]
-        else:
-            # For like/ilike → OR conditions
-            or_domain = []
-            for t in tokens:
-                or_domain.append(('purchase_order', operator, t))
-            if len(or_domain) > 1:
-                # build flat OR: ['|','|', cond1, cond2, cond3]
-                return ['|'] * (len(or_domain) - 1) + or_domain
-            return or_domain
+        conds = [("purchase_order", operator, t) for t in tokens]
+
+        if len(conds) > 1:
+            # Build flat AND domain: ["&", cond1, cond2, ...]
+            return ["&"] * (len(conds) - 1) + conds
+        return conds
