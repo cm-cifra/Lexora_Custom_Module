@@ -1,17 +1,17 @@
 <odoo>
-    <!-- Extend the search view: add Purchase Order filter -->
+    <!-- Extend search view: add Purchase Order filter -->
     <record id="view_sale_order_po_search" model="ir.ui.view">
         <field name="name">sale.order.purchase.order.search</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sales_order_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
-                <field name="purchase_order" string="Purchase Order"/>
+                <field name="purchase_order" string="Purchase Order" filter_domain="[]"/>
             </xpath>
         </field>
     </record>
 
-    <!-- Extend the tree view: show Purchase Order column -->
+    <!-- Extend tree view: show Purchase Order column -->
     <record id="view_sale_order_po_tree" model="ir.ui.view">
         <field name="name">sale.order.purchase.order.tree</field>
         <field name="model">sale.order</field>
