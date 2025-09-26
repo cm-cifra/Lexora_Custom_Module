@@ -22,48 +22,33 @@ class SaleOrder(models.Model):
             return ["|"] * (len(conds) - 1) + conds
         return conds
 
-    def _search(self, domain, offset=0, limit=None, order=None, access_rights_uid=None):
+    def _name_search(
+        self,
+        name,
+        args=None,
+        operator="ilike",
+        limit=100,
+        name_get_uid=None,
+    ):
         """
-        Expand purchase_order searches (tokenize and turn into '=' matches)
-        without breaking other domain clauses.
-        Example: ('purchase_order','ilike','PO1 PO2') -> ['|',('purchase_order','=','PO1'),('purchase_order','=','PO2')]
-        inserted *in place* of the original purchase_order clause.
+        Only apply token split search to `purchase_order` field.
+        All other searches behave as usual.
         """
-        if not domain:
-            return super()._search(domain, offset=offset, limit=limit, order=order, access_rights_uid=access_rights_uid)
+        args = list(args or [])
 
-        new_domain = []
-        modified = False
+        if name:
+            tokens = self._tokenize(name)
+            if tokens:
+                # Build OR domain on purchase_order field only
+                or_domain = self._make_or_domain("purchase_order", tokens)
+                args = ["|"] * (len(or_domain) - 1) + or_domain + args
 
-        for clause in domain:
-            # only transform simple 3-item clauses; keep operators and nested lists untouched
-            if isinstance(clause, (list, tuple)) and len(clause) == 3:
-                field, operator, value = clause
-                if field == "purchase_order" and operator in ("ilike", "like", "=") and value:
-                    # strip wildcards if user used ilike/like with %
-                    if operator in ("ilike", "like"):
-                        value = value.replace("%", "")
-                    tokens = self._tokenize(value)
-                    if not tokens:
-                        # nothing usable — skip the clause (or keep original if you prefer)
-                        continue
-                    if len(tokens) == 1:
-                        # single token → equality match
-                        new_domain.append((field, "=", tokens[0]))
-                    else:
-                        # multiple tokens -> build a flat OR chain
-                        # Example tokens = [a,b,c] -> ['|','|', (f,'=',a),(f,'=',b),(f,'=',c)]
-                        new_domain.extend(["|"] * (len(tokens) - 1))
-                        new_domain.extend((field, "=", t) for t in tokens)
-                    modified = True
-                    # skip appending original purchase_order clause
-                    continue
+        _logger.debug("SaleOrder._name_search: name=%s args=%s", name, args)
 
-            # default: keep clause unchanged
-            new_domain.append(clause)
-
-        _logger.debug("SaleOrder._search: original_domain=%s --> transformed_domain=%s", domain, (new_domain if modified else domain))
-
-        # if we didn't modify anything, pass the original domain through
-        final_domain = new_domain if modified else domain
-        return super()._search(final_domain, offset=offset, limit=limit, order=order, access_rights_uid=access_rights_uid)
+        return super()._name_search(
+            name,
+            args=args,
+            operator=operator,
+            limit=limit,
+            name_get_uid=name_get_uid,
+        )
