@@ -22,33 +22,16 @@ class SaleOrder(models.Model):
             return ["|"] * (len(conds) - 1) + conds
         return conds
 
-    def _name_search(
-        self,
-        name,
-        args=None,
-        operator="ilike",
-        limit=100,
-        name_get_uid=None,
-    ):
+    def search_multi_po(self, purchase_orders, **kwargs):
         """
-        Only apply token split search to `purchase_order` field.
-        All other searches behave as usual.
+        Custom search method: find orders by multiple purchase_order values.
+        Example: env['sale.order'].search_multi_po("PO1 PO2")
         """
-        args = list(args or [])
+        tokens = self._tokenize(purchase_orders)
+        if not tokens:
+            return self.browse()  # return empty recordset
 
-        if name:
-            tokens = self._tokenize(name)
-            if tokens:
-                # Build OR domain on purchase_order field only
-                or_domain = self._make_or_domain("purchase_order", tokens)
-                args = ["|"] * (len(or_domain) - 1) + or_domain + args
+        domain = self._make_or_domain("purchase_order", tokens)
+        _logger.debug("SaleOrder.search_multi_po: tokens=%s domain=%s", tokens, domain)
 
-        _logger.debug("SaleOrder._name_search: name=%s args=%s", name, args)
-
-        return super()._name_search(
-            name,
-            args=args,
-            operator=operator,
-            limit=limit,
-            name_get_uid=name_get_uid,
-        )
+        return self.search(domain, **kwargs)
