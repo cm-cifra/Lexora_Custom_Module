@@ -10,7 +10,7 @@
                 <field name="purchase_order" string="Purchase Order"/>
 
                 <!-- Quick filter: show only purchase orders with -R -->
-                <filter string="With -R" name="filter_purchase_order_r"
+                <filter string="Replacements -R" name="filter_purchase_order_r"
                         domain="[('purchase_order', 'ilike', '-R')]"/>
             </search>
         </field>
@@ -28,3 +28,4 @@
         </field>
     </record>
 </odoo>
+
