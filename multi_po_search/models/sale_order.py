@@ -5,7 +5,7 @@ from odoo import models, fields
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    purchase_order2 = fields.Char(string="Purchase Order")
+    purchase_order = fields.Char(string="Purchase Order")
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline into tokens."""
@@ -26,7 +26,7 @@ class SaleOrder(models.Model):
         for arg in domain:
             if isinstance(arg, (list, tuple)) and len(arg) == 3:
                 field, operator, value = arg
-                if field == "purchase_order2" and operator in ("ilike", "like", "=") and value:
+                if field == "purchase_order" and operator in ("ilike", "like", "=") and value:
                     tokens = self._tokenize(value)
                     if len(tokens) > 1:
                         new_domain.extend(self._make_or_domain(field, tokens))
