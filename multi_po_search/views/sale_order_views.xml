@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="sale.view_sales_order_filter"/>
         <field name="arch" type="xml">
             <search position="inside">
-                <field name="purchase_order2" string="PO # like "/>
+                <field name="purchase_order" string="PO # like "/>
             </search>
         </field>
     </record>
@@ -18,9 +18,8 @@
         <field name="inherit_id" ref="sale.view_order_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//tree" position="inside">
-                <field name="purchase_order2"/>
+                <field name="purchase_order"/>
             </xpath>
         </field>
     </record>
 </odoo>
-
