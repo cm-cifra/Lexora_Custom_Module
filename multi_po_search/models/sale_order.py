@@ -5,7 +5,7 @@ from odoo import models, fields
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    purchase_order = fields.Char(string="Purchase Order")
+    purchase_order2 = fields.Char(string="Purchase Order")
 
     def _tokenize(self, text):
         """Split by whitespace, comma, semicolon or newline into tokens."""
@@ -43,3 +43,4 @@ class SaleOrder(models.Model):
             order=order,
             access_rights_uid=access_rights_uid,
         )
+
