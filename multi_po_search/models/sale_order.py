@@ -26,7 +26,7 @@ class SaleOrder(models.Model):
         for arg in domain:
             if isinstance(arg, (list, tuple)) and len(arg) == 3:
                 field, operator, value = arg
-                if field == "purchase_order" and operator in ("ilike", "like", "=") and value:
+                if field == "purchase_order2" and operator in ("ilike", "like", "=") and value:
                     tokens = self._tokenize(value)
                     if len(tokens) > 1:
                         new_domain.extend(self._make_or_domain(field, tokens))
@@ -43,4 +43,5 @@ class SaleOrder(models.Model):
             order=order,
             access_rights_uid=access_rights_uid,
         )
+
 
